@@ -1,0 +1,140 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import React from 'react';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import MapPreview from '@/components/MapPreview';
+import { MapPin } from '@/components/MapPreview.types';
+import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
+import { RIDE_TYPES } from '@/lib/pricing';
+import { canCancel, getProgress, PAYMENT_LABELS, PHASES } from '@/lib/trips';
+import { useNow, useStore } from '@/lib/store';
+import { colors, peso, radius } from '@/lib/theme';
+
+export default function Track() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { state, cancelTrip, rateTrip } = useStore();
+  const now = useNow(1000);
+  const trip = state.trips.find((t) => t.id === id);
+  if (!trip) return <Empty icon="map-search-outline" title="Trip not found" />;
+
+  const food = trip.kind === 'food';
+  const accent = food ? colors.primary : colors.ride;
+  const p = getProgress(trip, now);
+  const phases = PHASES[trip.kind];
+  const live = !p.done && !p.cancelled;
+  const showRider = !(trip.kind === 'ride' && p.phase.key === 'searching');
+
+  const pins: MapPin[] = [
+    { id: 'p', coord: trip.pickup.location, kind: food ? 'restaurant' : 'pickup' },
+    { id: 'd', coord: trip.dropoff.location, kind: 'dropoff' },
+    ...(live && p.riderPos ? [{ id: 'r', coord: p.riderPos, kind: 'rider' as const }] : []),
+  ];
+
+  const onCancel = () =>
+    Alert.alert(food ? 'Cancel order?' : 'Cancel ride?', 'This cannot be undone.', [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Cancel', style: 'destructive', onPress: () => cancelTrip(trip.id) },
+    ]);
+
+  const mins = Math.max(1, Math.ceil(p.secondsLeft / 60));
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Stack.Screen options={{ title: food ? `Order ${trip.id}` : `Ride ${trip.id}` }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <MapPreview pins={pins} route={[trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.rideType === 'car' ? 'car' : 'motorbike'} />
+
+        <View style={{ padding: 16, gap: 14 }}>
+          <Card>
+            <Text style={[styles.status, { color: p.cancelled ? colors.danger : accent }]}>
+              {p.cancelled ? 'Cancelled' : p.phase.label}
+            </Text>
+            <Text style={{ color: colors.muted, marginTop: 4 }}>
+              {p.cancelled ? 'No charge was made.' : live ? `${p.phase.detail} · ~${mins} min left (demo speed)` : p.phase.detail}
+            </Text>
+            <View style={styles.bar}>
+              {phases.map((ph, i) => (
+                <View key={ph.key} style={[styles.seg, { backgroundColor: !p.cancelled && i <= p.index ? accent : colors.border }]} />
+              ))}
+            </View>
+          </Card>
+
+          {showRider && !p.cancelled && (
+            <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.avatar, { backgroundColor: food ? colors.primarySoft : colors.rideSoft }]}>
+                <MaterialCommunityIcons name={trip.rideType === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{trip.rider.name}</Text>
+                <Text style={{ color: colors.muted }}>{trip.rider.plate} · ★ {trip.rider.rating}</Text>
+              </View>
+              {live && (
+                <>
+                  <IconBtn icon="message-text-outline" onPress={() => Linking.openURL('sms:')} />
+                  <IconBtn icon="phone-outline" onPress={() => Linking.openURL('tel:')} />
+                </>
+              )}
+            </Card>
+          )}
+
+          {p.done && (
+            <Card>
+              <SectionTitle>{trip.rating ? 'Thanks for your rating!' : `Rate ${trip.rider.name}`}</SectionTitle>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Pressable key={n} onPress={() => rateTrip(trip.id, n)} hitSlop={6}>
+                    <MaterialCommunityIcons name={(trip.rating ?? 0) >= n ? 'star' : 'star-outline'} size={36} color={colors.warning} />
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
+          )}
+
+          <Card>
+            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'From' : 'Pickup'} text={trip.pickup.name} />
+            <StopLine icon="flag-checkered" color={colors.primary} title={food ? 'Deliver to' : 'Destination'} text={trip.dropoff.name} />
+            {trip.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Note" text={trip.note} /> : null}
+          </Card>
+
+          <Card>
+            <SectionTitle>{food ? 'Order summary' : `${RIDE_TYPES[trip.rideType ?? 'moto'].label} ride`}</SectionTitle>
+            {trip.items?.map((l) => <Row key={l.itemId} label={`${l.qty}× ${l.name}`} value={peso(l.price * l.qty)} />)}
+            {food && <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />}
+            {trip.lines.map((l) => <Row key={l.label} label={l.label} value={l.amount < 0 ? `−${peso(-l.amount)}` : peso(l.amount)} />)}
+            <Row label={`Total · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
+          </Card>
+
+          {canCancel(trip, now) && <Button title={food ? 'Cancel order' : 'Cancel ride'} variant="outline" color={colors.danger} onPress={onCancel} />}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function IconBtn({ icon, onPress }: { icon: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.iconBtn} hitSlop={4}>
+      <MaterialCommunityIcons name={icon as any} size={20} color={colors.text} />
+    </Pressable>
+  );
+}
+
+function StopLine({ icon, color, title, text }: { icon: string; color: string; title: string; text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', paddingVertical: 6 }}>
+      <MaterialCommunityIcons name={icon as any} size={20} color={color} />
+      <View style={{ marginLeft: 10, flex: 1 }}>
+        <Text style={{ color: colors.muted, fontSize: 12 }}>{title}</Text>
+        <Text style={{ color: colors.text, fontWeight: '600' }}>{text}</Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  status: { fontSize: 22, fontWeight: '800' },
+  bar: { flexDirection: 'row', gap: 6, marginTop: 14 },
+  seg: { flex: 1, height: 6, borderRadius: 3 },
+  avatar: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+});
