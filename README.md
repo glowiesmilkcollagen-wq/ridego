@@ -12,11 +12,22 @@ One app for **iPhone and Android** (built with Expo / React Native):
 
 ## 1. Run it on your phone (5 minutes, free)
 
+You need a computer with [Node.js](https://nodejs.org) (LTS version) installed. Open a terminal and run:
+
 ```bash
+git clone https://github.com/glowiesmilkcollagen-wq/ridego
+cd ridego
 npm install
 npx expo start
 ```
-Install **Expo Go** from the App Store / Play Store and scan the QR code. (Maps work in Expo Go.)
+
+**The QR code appears in your terminal** after `npx expo start` — it is generated each time you run it, so it is not on this page.
+
+1. Install **Expo Go** on your phone (App Store / Play Store).
+2. Scan the QR code: on **iPhone** use the normal Camera app; on **Android** use the "Scan QR code" button inside Expo Go.
+3. Your phone and computer must be on the **same Wi-Fi**. If it won't connect, stop the server (Ctrl+C) and run `npx expo start --tunnel` instead.
+
+Maps work in Expo Go.
 
 ## 2. Build installable apps
 
