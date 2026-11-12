@@ -34,8 +34,8 @@ const INITIAL: State = {
   pasugoDraft: { pickup: null, dropoff: null },
 };
 
-// v3: rides became pasugo (pick up & deliver); older saved data is not compatible.
-const KEY = 'ridego-state-v3';
+// v4: food orders renamed to pabili; older saved data is not compatible.
+const KEY = 'ridego-state-v4';
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -112,7 +112,7 @@ function useStoreValue() {
         if (!store || !items.length) return null;
         const { km, fee } = errandQuote(store, s.home);
         const trip: Trip = {
-          id: `F-${uid()}`, kind: 'food', createdAt: Date.now(),
+          id: `F-${uid()}`, kind: 'pabili', createdAt: Date.now(),
           pickup: store, dropoff: s.home, km, rider: makeRider(store.location),
           payment: s.payment, lines: [{ label: `Delivery fee (${km.toFixed(1)} km)`, amount: fee }], total: fee,
           items, note, budget,

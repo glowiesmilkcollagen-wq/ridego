@@ -57,7 +57,7 @@ export default function PlaceSearch() {
       <View style={styles.search}>
         <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
         <TextInput
-          autoFocus value={q} onChangeText={setQ} placeholder={target === 'store' ? 'Search a store, restaurant or mall' : 'Search a place'} placeholderTextColor={colors.muted}
+          autoFocus value={q} onChangeText={setQ} placeholder={target === 'store' ? 'Search a store, pharmacy, mall…' : 'Search a place'} placeholderTextColor={colors.muted}
           style={styles.input}
         />
       </View>

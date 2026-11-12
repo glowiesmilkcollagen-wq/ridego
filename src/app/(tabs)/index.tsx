@@ -3,13 +3,19 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import RestaurantCard from '@/components/RestaurantCard';
+import StoreCard from '@/components/StoreCard';
 import TripCard from '@/components/TripCard';
 import { SectionTitle } from '@/components/ui';
-import { RESTAURANTS } from '@/lib/data';
+import { CATEGORIES, STORES } from '@/lib/data';
 import { getProgress } from '@/lib/trips';
 import { useNow, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
+
+/** Best-rated store of each kind, so Home shows that pabili is not only for food. */
+const TOP_PER_CATEGORY = CATEGORIES.flatMap((c) => {
+  const best = STORES.filter((s) => s.category === c.key).sort((a, b) => b.rating - a.rating)[0];
+  return best ? [best] : [];
+});
 
 export default function Home() {
   const { state } = useStore();
@@ -35,10 +41,10 @@ export default function Home() {
         <Text style={styles.hello}>Hi {first}, where to today?</Text>
 
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable style={[styles.service, { backgroundColor: colors.primary }]} onPress={() => router.push('/food')}>
-            <Text style={styles.serviceEmoji}>🍔</Text>
-            <Text style={styles.serviceTitle}>Food</Text>
-            <Text style={styles.serviceSub}>We buy it & bring it to you</Text>
+          <Pressable style={[styles.service, { backgroundColor: colors.primary }]} onPress={() => router.push('/pabili')}>
+            <Text style={styles.serviceEmoji}>🛒</Text>
+            <Text style={styles.serviceTitle}>Pabili</Text>
+            <Text style={styles.serviceSub}>Food, medicine, groceries — we buy & bring it</Text>
           </Pressable>
           <Pressable style={[styles.service, { backgroundColor: colors.ride }]} onPress={() => router.push('/pasugo')}>
             <Text style={styles.serviceEmoji}>📦</Text>
@@ -63,10 +69,10 @@ export default function Home() {
           </View>
         )}
 
-        <SectionTitle style={{ marginTop: 20 }}>Popular near you</SectionTitle>
+        <SectionTitle style={{ marginTop: 20 }}>Pabili from places near you</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          {[...RESTAURANTS].sort((a, b) => b.rating - a.rating).slice(0, 5).map((r) => (
-            <RestaurantCard key={r.id} r={r} from={state.home.location} compact />
+          {TOP_PER_CATEGORY.map((r) => (
+            <StoreCard key={r.id} r={r} from={state.home.location} compact />
           ))}
         </ScrollView>
       </ScrollView>

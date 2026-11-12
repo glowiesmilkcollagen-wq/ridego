@@ -2,15 +2,16 @@
 
 One app for **iPhone and Android** (built with Expo / React Native):
 
-- **Buy & deliver ("pabili")** — the customer picks a restaurant from the list, or *any* store, and writes what to buy
+- **Pabili** — buy **anything**: food, medicine, groceries, convenience-store items, hardware, flowers, pet supplies.
+  The customer picks a suggested store (filter by type), or *any* store, and writes what to buy
   (quick-add suggestions, quantities, instructions, optional spending limit). A rider goes there, orders and **pays with their own money**,
   then delivers. The customer repays the items per the receipt, plus the delivery fee.
-  **The app only computes the delivery fee** (by distance from the store to the customer). No menus, prices or restaurant involvement.
+  **The app only computes the delivery fee** (by distance from the store to the customer). No menus, prices or store involvement. Pharmacies show a reminder that prescription medicines need a valid prescription.
 - **Pasugo** — ask a rider to pick something up at one place and bring it to you or anywhere: a **document / folder**,
   a **bag / package**, or a **person**. Set pickup and drop-off (drop-off defaults to your address), describe what or who,
   add the contact at the pickup and an optional receiver, choose **Motorcycle** or **Car**, see the fee, book, and track the rider live.
 - **Rider mode** — go online, receive pabili and pasugo requests, accept, navigate (opens Apple/Google Maps).
-  For buy & deliver the rider sees the shopping list, enters the receipt total after paying, and the app shows how much to collect
+  For pabili the rider sees the shopping list, enters the receipt total after paying, and the app shows how much to collect
   (receipt + delivery fee). Earnings dashboard.
 - **Activity & Account** — order and pasugo history, profile, saved address.
 
@@ -89,7 +90,7 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 
 ```
 src/app/            screens (Expo Router — each file is a screen)
-  (tabs)/           Home, Food (pabili), Pasugo, Activity, Account
+  (tabs)/           Home, Pabili, Pasugo, Activity, Account
   order             what to buy (shopping list) + delivery fee
   track/[id]        live tracking
   driver            rider mode
@@ -97,4 +98,4 @@ src/app/            screens (Expo Router — each file is a screen)
 src/lib/            data, pricing, trip simulation, app state
 src/components/     map, cards, buttons
 ```
-Prices: `src/lib/pricing.ts` — `deliveryFee` for pabili (₱49 for the first 2 km, then ₱10 per km) and `VEHICLES` / `pasugoFee` for pasugo. Suggested places: `src/lib/data.ts`.
+Prices: `src/lib/pricing.ts` — `deliveryFee` for pabili (₱49 for the first 2 km, then ₱10 per km) and `VEHICLES` / `pasugoFee` for pasugo. Suggested stores, store types and item suggestions: `src/lib/data.ts`.

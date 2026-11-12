@@ -67,14 +67,14 @@ export default function Driver() {
           {jobs.map((j) => (
             <Card key={j.id} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <MaterialCommunityIcons name={(j.kind === 'food' ? 'food' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={22} color={j.kind === 'food' ? colors.primary : colors.ride} />
-                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'food' ? 'Buy & deliver' : 'Pasugo'} · {j.km.toFixed(1)} km</Text>
+                <MaterialCommunityIcons name={(j.kind === 'pabili' ? 'basket-outline' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={22} color={j.kind === 'pabili' ? colors.primary : colors.ride} />
+                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {j.km.toFixed(1)} km</Text>
                 <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(j.payout)}</Text>
               </View>
               <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {j.pickup.name}</Text>
               <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {j.dropoff.name}</Text>
               {j.items ? <Text style={styles.line}>🛒 {j.items.join(', ')}</Text> : null}
-              <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'food' ? ' · you pay at the store' : ''}</Text>
+              <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'pabili' ? ' · you pay at the store' : ''}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <Button title="Skip" variant="outline" color={colors.muted} style={{ flex: 1 }} onPress={() => setJobs((js) => js.filter((x) => x.id !== j.id))} />
                 <Button title="Accept" color={colors.ride} style={{ flex: 2 }} onPress={() => acceptJob(j)} />
@@ -92,7 +92,7 @@ export default function Driver() {
           <SectionTitle>Recent jobs</SectionTitle>
           {driver.history.slice(0, 10).map((j) => (
             <View key={j.id + j.completedAt} style={styles.hist}>
-              <MaterialCommunityIcons name={(j.kind === 'food' ? 'food' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={18} color={colors.muted} />
+              <MaterialCommunityIcons name={(j.kind === 'pabili' ? 'basket-outline' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={18} color={colors.muted} />
               <Text style={{ flex: 1, marginLeft: 8, color: colors.text }} numberOfLines={1}>{j.dropoff.name}</Text>
               <Text style={{ fontWeight: '700', color: colors.text }}>{peso(j.payout)}</Text>
             </View>
@@ -108,7 +108,7 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
 }) {
   const [receipt, setReceipt] = useState('');
   const toPickup = job.stage === 0;
-  const buying = job.kind === 'food' && job.stage === 1;
+  const buying = job.kind === 'pabili' && job.stage === 1;
   const receiptValue = Number(receipt.replace(/[^0-9.]/g, ''));
 
   const next = () => {
@@ -122,7 +122,7 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
       <MapPreview
         height={200}
         pins={[
-          { id: 'p', coord: job.pickup.location, kind: job.kind === 'food' ? 'restaurant' : 'pickup' },
+          { id: 'p', coord: job.pickup.location, kind: job.kind === 'pabili' ? 'store' : 'pickup' },
           { id: 'd', coord: job.dropoff.location, kind: 'dropoff' },
         ]}
         route={[job.pickup.location, job.dropoff.location]}
@@ -152,7 +152,7 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
           </View>
         )}
 
-        {job.kind === 'food' && job.stage === 2 && job.receipt != null && (
+        {job.kind === 'pabili' && job.stage === 2 && job.receipt != null && (
           <View style={styles.collect}>
             <Text style={{ color: colors.text }}>Collect from customer</Text>
             <Text style={{ fontWeight: '800', fontSize: 22, color: colors.text, marginTop: 2 }}>{peso(job.receipt + job.fee)}</Text>

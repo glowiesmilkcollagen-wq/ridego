@@ -17,21 +17,21 @@ export default function Track() {
   const trip = state.trips.find((t) => t.id === id);
   if (!trip) return <Empty icon="map-search-outline" title="Trip not found" />;
 
-  const food = trip.kind === 'food';
-  const accent = food ? colors.primary : colors.ride;
+  const pabili = trip.kind === 'pabili';
+  const accent = pabili ? colors.primary : colors.ride;
   const p = getProgress(trip, now);
   const phases = PHASES[trip.kind];
   const live = !p.done && !p.cancelled;
   const showRider = p.phase.key !== 'searching';
 
   const pins: MapPin[] = [
-    { id: 'p', coord: trip.pickup.location, kind: food ? 'restaurant' : 'pickup' },
+    { id: 'p', coord: trip.pickup.location, kind: pabili ? 'store' : 'pickup' },
     { id: 'd', coord: trip.dropoff.location, kind: 'dropoff' },
     ...(live && p.riderPos ? [{ id: 'r', coord: p.riderPos, kind: 'rider' as const }] : []),
   ];
 
   const onCancel = () =>
-    Alert.alert(food ? 'Cancel order?' : 'Cancel pasugo?', 'This cannot be undone.', [
+    Alert.alert(pabili ? 'Cancel order?' : 'Cancel pasugo?', 'This cannot be undone.', [
       { text: 'Keep it', style: 'cancel' },
       { text: 'Cancel', style: 'destructive', onPress: () => cancelTrip(trip.id) },
     ]);
@@ -40,7 +40,7 @@ export default function Track() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: food ? `Order ${trip.id}` : `Pasugo ${trip.id}` }} />
+      <Stack.Screen options={{ title: pabili ? `Order ${trip.id}` : `Pasugo ${trip.id}` }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <MapPreview pins={pins} route={[trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.vehicle === 'car' ? 'car' : 'motorbike'} />
 
@@ -61,7 +61,7 @@ export default function Track() {
 
           {showRider && !p.cancelled && (
             <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={[styles.avatar, { backgroundColor: food ? colors.primarySoft : colors.rideSoft }]}>
+              <View style={[styles.avatar, { backgroundColor: pabili ? colors.primarySoft : colors.rideSoft }]}>
                 <MaterialCommunityIcons name={trip.vehicle === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -91,14 +91,14 @@ export default function Track() {
           )}
 
           <Card>
-            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'Buy from' : 'Pick up from'} text={trip.pickup.name} />
-            <StopLine icon="flag-checkered" color={colors.primary} title={food ? 'Deliver to' : 'Bring to'} text={trip.dropoff.name} />
+            <StopLine icon={pabili ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={pabili ? 'Buy from' : 'Pick up from'} text={trip.pickup.name} />
+            <StopLine icon="flag-checkered" color={colors.primary} title={pabili ? 'Deliver to' : 'Bring to'} text={trip.dropoff.name} />
             {trip.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Note" text={trip.note} /> : null}
           </Card>
 
           <Card>
-            <SectionTitle>{food ? 'Shopping list' : `${CARGO[trip.cargo ?? 'parcel'].emoji}  ${CARGO[trip.cargo ?? 'parcel'].label}`}</SectionTitle>
-            {!food && (
+            <SectionTitle>{pabili ? 'Shopping list' : `${CARGO[trip.cargo ?? 'parcel'].emoji}  ${CARGO[trip.cargo ?? 'parcel'].label}`}</SectionTitle>
+            {!pabili && (
               <View style={{ gap: 4 }}>
                 {trip.description ? <Text style={{ color: colors.text }}>{trip.description}</Text> : null}
                 {trip.sender ? <Row label={trip.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(trip.sender)} /> : null}
@@ -110,19 +110,19 @@ export default function Track() {
             {trip.items?.map((i) => (
               <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>
             ))}
-            {food && <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />}
+            {pabili && <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />}
             {trip.lines.map((l) => <Row key={l.label} label={l.label} value={peso(l.amount)} />)}
-            {food && <Row label="Items" value="Pay rider as per receipt" />}
+            {pabili && <Row label="Items" value="Pay rider as per receipt" />}
             {trip.budget ? <Row label="Item spending limit" value={peso(trip.budget)} /> : null}
-            <Row label={`${food ? 'Delivery fee' : 'Total'} · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
-            {food && (
+            <Row label={`${pabili ? 'Delivery fee' : 'Total'} · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
+            {pabili && (
               <Text style={{ color: colors.muted, marginTop: 6, lineHeight: 19 }}>
                 The rider pays for your items at the store. Repay the exact receipt amount when your order arrives.
               </Text>
             )}
           </Card>
 
-          {canCancel(trip, now) && <Button title={food ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} />}
+          {canCancel(trip, now) && <Button title={pabili ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} />}
         </View>
       </ScrollView>
     </View>

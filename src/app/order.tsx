@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PaymentPicker from '@/components/PaymentPicker';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
-import { RESTAURANTS } from '@/lib/data';
+import { CATEGORIES, DEFAULT_ITEM_EXAMPLE, STORES } from '@/lib/data';
 import { etaMinutes } from '@/lib/pricing';
 import { errandQuote, useStore } from '@/lib/store';
 import { colors, peso, radius } from '@/lib/theme';
@@ -21,15 +21,17 @@ export default function Order() {
   if (!store) {
     return (
       <Empty icon="storefront-outline" title="Choose where to buy" subtitle="Pick a place from the list or any store near you.">
-        <Button title="Choose a store" onPress={() => router.replace('/food')} style={{ marginTop: 20 }} />
+        <Button title="Choose a store" onPress={() => router.replace('/pabili')} style={{ marginTop: 20 }} />
       </Empty>
     );
   }
 
-  const known = storeId ? RESTAURANTS.find((r) => r.id === storeId) : undefined;
+  const known = storeId ? STORES.find((r) => r.id === storeId) : undefined;
   const suggestions = (known?.favorites ?? []).filter((f) => !items.some((i) => i.name.toLowerCase() === f.toLowerCase()));
   const { km, fee } = errandQuote(store, state.home);
   const eta = (known?.waitMinutes ?? 15) + etaMinutes(km) + 5;
+  const example = CATEGORIES.find((c) => c.key === known?.category)?.example ?? DEFAULT_ITEM_EXAMPLE;
+  const pharmacy = known?.category === 'Medicine' || /pharma|drug|botika|parmasya/i.test(store.name);
   const budgetValue = Number(budget.replace(/[^0-9.]/g, '')) || undefined;
 
   const add = () => {
@@ -59,7 +61,7 @@ export default function Order() {
           <View style={styles.addRow}>
             <TextInput
               value={draft} onChangeText={setDraft} onSubmitEditing={add} returnKeyType="done" blurOnSubmit={false}
-              placeholder="e.g. 2pc Chicken with rice, spicy" placeholderTextColor={colors.muted} style={styles.addInput}
+              placeholder={example} placeholderTextColor={colors.muted} style={styles.addInput}
             />
             <Pressable accessibilityLabel="Add item" onPress={add} style={[styles.addBtn, !draft.trim() && { opacity: 0.4 }]} disabled={!draft.trim()}>
               <MaterialCommunityIcons name="plus" size={22} color="#fff" />
@@ -73,6 +75,16 @@ export default function Order() {
                   <Text style={{ color: colors.primary, fontWeight: '600' }}>+ {f}</Text>
                 </Pressable>
               ))}
+            </View>
+          )}
+
+          {pharmacy && (
+            <View style={[styles.info, { backgroundColor: '#E0F2FE', marginTop: 12 }]}>
+              <MaterialCommunityIcons name="prescription" size={20} color={colors.text} />
+              <Text style={{ flex: 1, marginLeft: 8, color: colors.text, lineHeight: 19 }}>
+                Prescription medicines (e.g. antibiotics) can only be sold with a valid prescription. Write the exact name and
+                strength, and say in the instructions how the rider can get your prescription.
+              </Text>
             </View>
           )}
 
@@ -100,7 +112,7 @@ export default function Order() {
           <SectionTitle>Instructions for the rider</SectionTitle>
           <TextInput
             value={note} onChangeText={setNote} multiline placeholderTextColor={colors.muted} style={styles.note}
-            placeholder="e.g. If adobo is sold out, get tapsilog. Extra rice please."
+            placeholder={pharmacy ? "e.g. Generic brand is OK. Pick up my prescription from the guard first." : "e.g. If sold out, get a similar item. Ask for the receipt."}
           />
           <Text style={styles.label}>Maximum the rider may spend on items (optional)</Text>
           <View style={styles.budget}>

@@ -1,13 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Restaurant } from '@/lib/data';
+import { Store } from '@/lib/data';
 import { LatLng, roadKm } from '@/lib/geo';
 import { deliveryFee, etaMinutes } from '@/lib/pricing';
 import { colors, peso, radius } from '@/lib/theme';
 import { useStartErrand } from './useStartErrand';
 
-export default function RestaurantCard({ r, from, compact }: { r: Restaurant; from: LatLng; compact?: boolean }) {
+export default function StoreCard({ r, from, compact }: { r: Store; from: LatLng; compact?: boolean }) {
   const start = useStartErrand();
   const km = roadKm(r.location, from);
   const eta = r.waitMinutes + etaMinutes(km) + 5;
@@ -27,7 +27,7 @@ export default function RestaurantCard({ r, from, compact }: { r: Restaurant; fr
             <Text style={{ fontWeight: '700', marginLeft: 2 }}>{r.rating}</Text>
           </View>
         </View>
-        <Text style={styles.meta} numberOfLines={1}>{r.cuisine} · {r.address}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{r.tagline} · {r.address}</Text>
         <Text style={styles.meta}>~{eta} min · {peso(deliveryFee(km))} delivery</Text>
       </View>
     </Pressable>

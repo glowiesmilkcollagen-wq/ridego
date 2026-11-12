@@ -7,19 +7,19 @@ import { colors, peso, radius } from '@/lib/theme';
 
 export default function TripCard({ trip, now }: { trip: Trip; now: number }) {
   const p = getProgress(trip, now);
-  const food = trip.kind === 'food';
+  const pabili = trip.kind === 'pabili';
   const status = p.cancelled ? 'Cancelled' : p.phase.label;
-  const statusColor = p.cancelled ? colors.danger : p.done ? colors.muted : food ? colors.primary : colors.ride;
-  const title = food ? trip.pickup.name : `${CARGO[trip.cargo ?? 'parcel'].label} · from ${trip.pickup.name}`;
-  const sub = food ? `${trip.items?.reduce((s, l) => s + l.qty, 0)} items` : `${trip.km.toFixed(1)} km · ${new Date(trip.createdAt).toLocaleDateString()}`;
+  const statusColor = p.cancelled ? colors.danger : p.done ? colors.muted : pabili ? colors.primary : colors.ride;
+  const title = pabili ? trip.pickup.name : `${CARGO[trip.cargo ?? 'parcel'].label} · from ${trip.pickup.name}`;
+  const sub = pabili ? `${trip.items?.reduce((s, l) => s + l.qty, 0)} items` : `${trip.km.toFixed(1)} km · ${new Date(trip.createdAt).toLocaleDateString()}`;
   return (
     <Pressable onPress={() => router.push(`/track/${trip.id}`)} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}>
-      <View style={[styles.icon, { backgroundColor: food ? colors.primarySoft : colors.rideSoft }]}>
-        <MaterialCommunityIcons name={(food ? 'food' : CARGO[trip.cargo ?? 'parcel'].icon) as any} size={22} color={food ? colors.primary : colors.ride} />
+      <View style={[styles.icon, { backgroundColor: pabili ? colors.primarySoft : colors.rideSoft }]}>
+        <MaterialCommunityIcons name={(pabili ? 'basket-outline' : CARGO[trip.cargo ?? 'parcel'].icon) as any} size={22} color={pabili ? colors.primary : colors.ride} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(trip.total)}{food ? ' delivery' : ''}</Text>
+        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(trip.total)}{pabili ? ' delivery' : ''}</Text>
         <Text style={[styles.status, { color: statusColor }]}>{status}</Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />

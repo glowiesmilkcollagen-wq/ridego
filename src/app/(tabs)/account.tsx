@@ -50,7 +50,7 @@ export default function Account() {
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo v1.2 — Pabili (buy & deliver) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. This build runs on demo data: riders and trip progress are simulated on the device.
+            RideGo v1.3 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. This build runs on demo data: riders and trip progress are simulated on the device.
           </Text>
         </Card>
 

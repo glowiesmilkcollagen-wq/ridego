@@ -19,7 +19,7 @@ export const PAYMENT_LABELS: Record<PaymentMethod, string> = { cash: 'Cash', gca
 
 export type Trip = {
   id: string;
-  kind: 'food' | 'pasugo';
+  kind: 'pabili' | 'pasugo';
   createdAt: number;
   cancelledAt?: number;
   rating?: number;
@@ -30,7 +30,7 @@ export type Trip = {
   payment: PaymentMethod;
   lines: { label: string; amount: number }[];
   total: number;
-  // food (buy-and-deliver) only
+  // pabili (buy & deliver) only
   items?: ErrandItem[];
   note?: string;
   /** Optional spending limit the customer gives the rider for the items. */
@@ -53,7 +53,7 @@ type Phase = { key: string; label: string; detail: string; seconds: number };
  * Durations are compressed for demo purposes; in production the status comes from your backend.
  */
 export const PHASES: Record<Trip['kind'], Phase[]> = {
-  food: [
+  pabili: [
     { key: 'searching', label: 'Finding a rider', detail: 'Matching you with a nearby rider', seconds: 6 },
     { key: 'tostore', label: 'Rider heading to the store', detail: 'Your rider will order and pay for your items', seconds: 18 },
     { key: 'buying', label: 'Rider is buying your order', detail: 'Ordering at the counter — keep your phone handy', seconds: 22 },
@@ -103,7 +103,7 @@ export function getProgress(trip: Trip, now = Date.now()): Progress {
   const d = trip.dropoff.location;
 
   let riderPos: LatLng | null = null;
-  if (trip.kind === 'food') {
+  if (trip.kind === 'pabili') {
     // Rider goes to the store, buys the items, then delivers.
     if (key === 'searching') riderPos = null;
     else if (key === 'tostore') riderPos = lerp(start, p, t);
@@ -131,5 +131,5 @@ export function getProgress(trip: Trip, now = Date.now()): Progress {
 export function canCancel(trip: Trip, now = Date.now()) {
   const pr = getProgress(trip, now);
   if (pr.cancelled || pr.done) return false;
-  return trip.kind === 'food' ? pr.phase.key === 'searching' || pr.phase.key === 'tostore' : pr.phase.key !== 'intransit';
+  return trip.kind === 'pabili' ? pr.phase.key === 'searching' || pr.phase.key === 'tostore' : pr.phase.key !== 'intransit';
 }
