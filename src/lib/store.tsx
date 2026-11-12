@@ -1,39 +1,41 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { findRestaurant, PLATES, RIDER_NAMES } from './data';
+import { PLATES, RIDER_NAMES } from './data';
 import { DEFAULT_LOCATION, LatLng, offset, roadKm } from './geo';
-import { deliveryFee, RideType, rideFare, RIDE_TYPES, SERVICE_FEE_RATE } from './pricing';
-import { CartLine, PaymentMethod, Stop, Trip } from './trips';
+import { deliveryFee, RideType, rideFare, RIDE_TYPES } from './pricing';
+import { ErrandItem, PaymentMethod, Stop, Trip } from './trips';
 import { DriverJob } from './driver';
 
 type Profile = { name: string; phone: string };
-type Cart = { restaurantId: string | null; lines: CartLine[] };
+/** The buy-for-me order being drafted: where to buy and what to buy. */
+type Errand = { store: Stop | null; storeId: string | null; items: ErrandItem[] };
 type DriverState = { online: boolean; earnings: number; completed: number; active: DriverJob | null; history: DriverJob[] };
 
 type State = {
   ready: boolean;
   profile: Profile;
   home: Stop;
-  cart: Cart;
+  errand: Errand;
   trips: Trip[];
   payment: PaymentMethod;
   driver: DriverState;
   rideDraft: { pickup: Stop | null; dropoff: Stop | null };
 };
 
-const EMPTY_CART: Cart = { restaurantId: null, lines: [] };
+const EMPTY_ERRAND: Errand = { store: null, storeId: null, items: [] };
 const INITIAL: State = {
   ready: false,
   profile: { name: 'Guest', phone: '' },
   home: { name: 'Ayala Triangle, Makati', location: DEFAULT_LOCATION },
-  cart: EMPTY_CART,
+  errand: EMPTY_ERRAND,
   trips: [],
   payment: 'cash',
   driver: { online: false, earnings: 0, completed: 0, active: null, history: [] },
   rideDraft: { pickup: null, dropoff: null },
 };
 
-const KEY = 'ridego-state-v1';
+// v2: food orders became buy-and-deliver errands; older saved data is not compatible.
+const KEY = 'ridego-state-v2';
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -46,22 +48,13 @@ function makeRider(near: LatLng) {
   };
 }
 
-export function cartTotals(cart: Cart, home: Stop) {
-  const r = cart.restaurantId ? findRestaurant(cart.restaurantId) : undefined;
-  const subtotal = cart.lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const km = r ? roadKm(r.location, home.location) : 0;
-  const fee = r ? deliveryFee(km) : 0;
-  const freeDelivery = r?.promo?.startsWith('Free delivery') && subtotal >= 399;
-  const service = Math.round(subtotal * SERVICE_FEE_RATE);
-  const discount = r?.promo?.startsWith('20% off') ? Math.round(subtotal * 0.2) : 0;
-  const lines = [
-    { label: 'Subtotal', amount: subtotal },
-    { label: 'Delivery fee', amount: freeDelivery ? 0 : fee },
-    { label: 'Service fee', amount: service },
-    ...(discount ? [{ label: 'Promo discount', amount: -discount }] : []),
-  ];
-  return { restaurant: r, subtotal, km, lines, total: lines.reduce((s, l) => s + l.amount, 0), count: cart.lines.reduce((s, l) => s + l.qty, 0) };
+/** The delivery fee is the only amount the app computes for a buy-and-deliver order. */
+export function errandQuote(store: Stop, home: Stop) {
+  const km = roadKm(store.location, home.location);
+  return { km, fee: deliveryFee(km) };
 }
+
+export const errandCount = (e: Errand) => e.items.reduce((s, i) => s + i.qty, 0);
 
 function useStoreValue() {
   const [state, setState] = useState<State>(INITIAL);
@@ -95,34 +88,36 @@ function useStoreValue() {
       swapRideStops: () => update((s) => ({ rideDraft: { pickup: s.rideDraft.dropoff, dropoff: s.rideDraft.pickup } })),
       setPayment: (payment: PaymentMethod) => update(() => ({ payment })),
 
-      addToCart: (restaurantId: string, line: Omit<CartLine, 'qty'>) =>
+      setErrandStore: (store: Stop, storeId: string | null) =>
+        update((s) => ({ errand: { store, storeId, items: s.errand.storeId === storeId && storeId ? s.errand.items : [] } })),
+      addErrandItem: (name: string) =>
         update((s) => {
-          const cart = s.cart.restaurantId === restaurantId ? s.cart : { restaurantId, lines: [] };
-          const existing = cart.lines.find((l) => l.itemId === line.itemId);
-          const lines = existing
-            ? cart.lines.map((l) => (l.itemId === line.itemId ? { ...l, qty: l.qty + 1 } : l))
-            : [...cart.lines, { ...line, qty: 1 }];
-          return { cart: { restaurantId, lines } };
+          const clean = name.trim();
+          if (!clean) return {};
+          const existing = s.errand.items.find((i) => i.name.toLowerCase() === clean.toLowerCase());
+          const items = existing
+            ? s.errand.items.map((i) => (i === existing ? { ...i, qty: i.qty + 1 } : i))
+            : [...s.errand.items, { id: uid(), name: clean, qty: 1 }];
+          return { errand: { ...s.errand, items } };
         }),
-      changeQty: (itemId: string, delta: number) =>
-        update((s) => {
-          const lines = s.cart.lines.map((l) => (l.itemId === itemId ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0);
-          return { cart: lines.length ? { ...s.cart, lines } : EMPTY_CART };
-        }),
-      clearCart: () => update(() => ({ cart: EMPTY_CART })),
+      changeErrandQty: (id: string, delta: number) =>
+        update((s) => ({
+          errand: { ...s.errand, items: s.errand.items.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0) },
+        })),
+      clearErrand: () => update(() => ({ errand: EMPTY_ERRAND })),
 
-      placeFoodOrder: (note: string): string | null => {
+      placeErrand: (note: string, budget?: number): string | null => {
         const s = latest.current;
-        const t = cartTotals(s.cart, s.home);
-        if (!t.restaurant || !t.count) return null;
+        const { store, items } = s.errand;
+        if (!store || !items.length) return null;
+        const { km, fee } = errandQuote(store, s.home);
         const trip: Trip = {
           id: `F-${uid()}`, kind: 'food', createdAt: Date.now(),
-          pickup: { name: t.restaurant.name, location: t.restaurant.location },
-          dropoff: s.home, km: t.km, rider: makeRider(t.restaurant.location),
-          payment: s.payment, lines: t.lines, total: t.total,
-          restaurantId: t.restaurant.id, items: s.cart.lines, note,
+          pickup: store, dropoff: s.home, km, rider: makeRider(store.location),
+          payment: s.payment, lines: [{ label: `Delivery fee (${km.toFixed(1)} km)`, amount: fee }], total: fee,
+          items, note, budget,
         };
-        update((cur) => ({ trips: [trip, ...cur.trips], cart: EMPTY_CART }));
+        update((cur) => ({ trips: [trip, ...cur.trips], errand: EMPTY_ERRAND }));
         return trip.id;
       },
 
@@ -148,11 +143,12 @@ function useStoreValue() {
       // Rider (driver) mode
       setOnline: (online: boolean) => update((s) => ({ driver: { ...s.driver, online } })),
       acceptJob: (job: DriverJob) => update((s) => ({ driver: { ...s.driver, active: { ...job, stage: 0 } } })),
-      advanceJob: () =>
+      /** Moves the active job to its next stage. `receipt` is what the rider paid at the store (buy-and-deliver only). */
+      advanceJob: (receipt?: number) =>
         update((s) => {
           const job = s.driver.active;
           if (!job) return {};
-          if (job.stage < 2) return { driver: { ...s.driver, active: { ...job, stage: job.stage + 1 } } };
+          if (job.stage < 2) return { driver: { ...s.driver, active: { ...job, stage: job.stage + 1, receipt: receipt ?? job.receipt } } };
           return {
             driver: {
               ...s.driver,

@@ -18,9 +18,11 @@ export function rideFare(km: number, type: RideType) {
   return Math.round(Math.max(t.min, t.base + t.perKm * km + t.perMin * etaMinutes(km, type)));
 }
 
+/**
+ * The only amount the app charges for a buy-and-deliver order. The items themselves are
+ * paid by the rider at the store and repaid by the customer based on the receipt.
+ */
 export function deliveryFee(km: number) {
-  return Math.round(29 + Math.max(0, km - 2) * 8);
+  return Math.round(49 + Math.max(0, km - 2) * 10);
 }
-
-export const SERVICE_FEE_RATE = 0.05;
 export const RIDER_SHARE = 0.8;

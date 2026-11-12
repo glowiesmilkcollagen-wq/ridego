@@ -1,15 +1,17 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useStartErrand } from '@/components/useStartErrand';
 import { PLACES } from '@/lib/data';
 import { Stop } from '@/lib/trips';
 import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 export default function PlaceSearch() {
-  const { target } = useLocalSearchParams<{ target: 'pickup' | 'dropoff' | 'home' }>();
+  const { target } = useLocalSearchParams<{ target: 'pickup' | 'dropoff' | 'home' | 'store' }>();
+  const startErrand = useStartErrand();
   const { state, setRideStop, setHome } = useStore();
   const [q, setQ] = useState('');
   const [locating, setLocating] = useState(false);
@@ -20,6 +22,7 @@ export default function PlaceSearch() {
   }, [q]);
 
   const choose = (stop: Stop) => {
+    if (target === 'store') return startErrand(stop, null, 'replace');
     if (target === 'home') setHome(stop);
     else setRideStop(target ?? 'dropoff', stop);
     router.back();
@@ -50,10 +53,11 @@ export default function PlaceSearch() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <Stack.Screen options={{ title: TITLES[target ?? 'dropoff'] }} />
       <View style={styles.search}>
         <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
         <TextInput
-          autoFocus value={q} onChangeText={setQ} placeholder="Search a place" placeholderTextColor={colors.muted}
+          autoFocus value={q} onChangeText={setQ} placeholder={target === 'store' ? 'Search a store, restaurant or mall' : 'Search a place'} placeholderTextColor={colors.muted}
           style={styles.input}
         />
       </View>
@@ -61,7 +65,7 @@ export default function PlaceSearch() {
         {locating ? <ActivityIndicator color={colors.primary} /> : <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />}
         <Text style={[styles.name, { color: colors.primary, marginLeft: 12 }]}>Use my current location</Text>
       </Pressable>
-      {target !== 'home' && (
+      {target !== 'home' && target !== 'store' && (
         <Pressable style={styles.item} onPress={() => choose(state.home)}>
           <MaterialCommunityIcons name="home-outline" size={22} color={colors.text} />
           <View style={{ marginLeft: 12 }}>
@@ -87,6 +91,8 @@ export default function PlaceSearch() {
     </View>
   );
 }
+
+const TITLES = { pickup: 'Pickup point', dropoff: 'Destination', home: 'Delivery address', store: 'Where should the rider buy?' };
 
 const styles = StyleSheet.create({
   search: {

@@ -22,7 +22,7 @@ export default function Track() {
   const p = getProgress(trip, now);
   const phases = PHASES[trip.kind];
   const live = !p.done && !p.cancelled;
-  const showRider = !(trip.kind === 'ride' && p.phase.key === 'searching');
+  const showRider = p.phase.key !== 'searching';
 
   const pins: MapPin[] = [
     { id: 'p', coord: trip.pickup.location, kind: food ? 'restaurant' : 'pickup' },
@@ -91,17 +91,26 @@ export default function Track() {
           )}
 
           <Card>
-            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'From' : 'Pickup'} text={trip.pickup.name} />
+            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'Buy from' : 'Pickup'} text={trip.pickup.name} />
             <StopLine icon="flag-checkered" color={colors.primary} title={food ? 'Deliver to' : 'Destination'} text={trip.dropoff.name} />
             {trip.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Note" text={trip.note} /> : null}
           </Card>
 
           <Card>
-            <SectionTitle>{food ? 'Order summary' : `${RIDE_TYPES[trip.rideType ?? 'moto'].label} ride`}</SectionTitle>
-            {trip.items?.map((l) => <Row key={l.itemId} label={`${l.qty}× ${l.name}`} value={peso(l.price * l.qty)} />)}
+            <SectionTitle>{food ? 'Shopping list' : `${RIDE_TYPES[trip.rideType ?? 'moto'].label} ride`}</SectionTitle>
+            {trip.items?.map((i) => (
+              <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>
+            ))}
             {food && <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />}
-            {trip.lines.map((l) => <Row key={l.label} label={l.label} value={l.amount < 0 ? `−${peso(-l.amount)}` : peso(l.amount)} />)}
-            <Row label={`Total · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
+            {trip.lines.map((l) => <Row key={l.label} label={l.label} value={peso(l.amount)} />)}
+            {food && <Row label="Items" value="Pay rider as per receipt" />}
+            {trip.budget ? <Row label="Item spending limit" value={peso(trip.budget)} /> : null}
+            <Row label={`${food ? 'Delivery fee' : 'Total'} · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
+            {food && (
+              <Text style={{ color: colors.muted, marginTop: 6, lineHeight: 19 }}>
+                The rider pays for your items at the store. Repay the exact receipt amount when your order arrives.
+              </Text>
+            )}
           </Card>
 
           {canCancel(trip, now) && <Button title={food ? 'Cancel order' : 'Cancel ride'} variant="outline" color={colors.danger} onPress={onCancel} />}

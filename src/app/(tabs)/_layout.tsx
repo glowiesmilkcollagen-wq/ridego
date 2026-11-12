@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router/js-tabs';
 import React from 'react';
-import { useStore } from '@/lib/store';
+import { errandCount, useStore } from '@/lib/store';
 import { colors } from '@/lib/theme';
 
 const icon = (name: string) => ({ color, size }: { color: any; size: number }) => (
@@ -10,7 +10,7 @@ const icon = (name: string) => ({ color, size }: { color: any; size: number }) =
 
 export default function TabsLayout() {
   const { state } = useStore();
-  const count = state.cart.lines.reduce((s, l) => s + l.qty, 0);
+  const count = errandCount(state.errand);
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary, headerShown: false, tabBarLabelStyle: { fontWeight: '600' } }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home-variant') }} />

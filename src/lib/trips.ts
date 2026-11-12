@@ -2,7 +2,8 @@ import { LatLng, lerp } from './geo';
 import { RideType } from './pricing';
 
 export type Stop = { name: string; location: LatLng };
-export type CartLine = { itemId: string; name: string; price: number; qty: number };
+/** One line of a buy-for-me shopping list. No price: the rider pays at the store. */
+export type ErrandItem = { id: string; name: string; qty: number };
 export type PaymentMethod = 'cash' | 'gcash' | 'card';
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = { cash: 'Cash', gcash: 'GCash', card: 'Credit / Debit card' };
 
@@ -19,10 +20,11 @@ export type Trip = {
   payment: PaymentMethod;
   lines: { label: string; amount: number }[];
   total: number;
-  // food only
-  restaurantId?: string;
-  items?: CartLine[];
+  // food (buy-and-deliver) only
+  items?: ErrandItem[];
   note?: string;
+  /** Optional spending limit the customer gives the rider for the items. */
+  budget?: number;
   // ride only
   rideType?: RideType;
 };
@@ -35,11 +37,11 @@ type Phase = { key: string; label: string; detail: string; seconds: number };
  */
 export const PHASES: Record<Trip['kind'], Phase[]> = {
   food: [
-    { key: 'placed', label: 'Order placed', detail: 'Waiting for the restaurant to confirm', seconds: 8 },
-    { key: 'preparing', label: 'Preparing your food', detail: 'The restaurant is cooking your order', seconds: 25 },
-    { key: 'pickup', label: 'Rider picking up', detail: 'Your rider is at the restaurant', seconds: 12 },
-    { key: 'onway', label: 'On the way', detail: 'Your food is on its way to you', seconds: 35 },
-    { key: 'done', label: 'Delivered', detail: 'Enjoy your meal!', seconds: 0 },
+    { key: 'searching', label: 'Finding a rider', detail: 'Matching you with a nearby rider', seconds: 6 },
+    { key: 'tostore', label: 'Rider heading to the store', detail: 'Your rider will order and pay for your items', seconds: 18 },
+    { key: 'buying', label: 'Rider is buying your order', detail: 'Ordering at the counter — keep your phone handy', seconds: 22 },
+    { key: 'onway', label: 'On the way to you', detail: 'Prepare the payment for the items and delivery fee', seconds: 30 },
+    { key: 'done', label: 'Delivered', detail: 'Pay the rider the receipt amount plus the delivery fee', seconds: 0 },
   ],
   ride: [
     { key: 'searching', label: 'Finding your rider', detail: 'Matching you with a nearby rider', seconds: 6 },
@@ -82,10 +84,10 @@ export function getProgress(trip: Trip, now = Date.now()): Progress {
 
   let riderPos: LatLng | null = null;
   if (trip.kind === 'food') {
-    // Rider heads to the restaurant while food is being prepared, then delivers.
-    if (key === 'placed') riderPos = start;
-    else if (key === 'preparing') riderPos = lerp(start, p, t);
-    else if (key === 'pickup') riderPos = p;
+    // Rider goes to the store, buys the items, then delivers.
+    if (key === 'searching') riderPos = null;
+    else if (key === 'tostore') riderPos = lerp(start, p, t);
+    else if (key === 'buying') riderPos = p;
     else if (key === 'onway') riderPos = lerp(p, d, t);
     else riderPos = d;
   } else {
@@ -105,9 +107,9 @@ export function getProgress(trip: Trip, now = Date.now()): Progress {
   };
 }
 
-/** Customers can cancel before food is being prepared, or before the ride starts. */
+/** Customers can cancel until the rider starts buying, or before the ride starts. */
 export function canCancel(trip: Trip, now = Date.now()) {
   const pr = getProgress(trip, now);
   if (pr.cancelled || pr.done) return false;
-  return trip.kind === 'food' ? pr.phase.key === 'placed' : pr.phase.key !== 'ontrip';
+  return trip.kind === 'food' ? pr.phase.key === 'searching' || pr.phase.key === 'tostore' : pr.phase.key !== 'ontrip';
 }

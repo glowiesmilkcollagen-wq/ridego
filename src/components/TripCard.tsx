@@ -19,7 +19,7 @@ export default function TripCard({ trip, now }: { trip: Trip; now: number }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(trip.total)}</Text>
+        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(trip.total)}{food ? ' delivery' : ''}</Text>
         <Text style={[styles.status, { color: statusColor }]}>{status}</Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />

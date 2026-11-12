@@ -1,13 +1,18 @@
-# RideGo — Food delivery + motorcycle taxi
+# RideGo — Buy & deliver + motorcycle taxi
 
 One app for **iPhone and Android** (built with Expo / React Native):
 
-- **Food** — browse restaurants, search dishes, filter by category, cart, promos, checkout (Cash / GCash / Card), live order tracking on a map, rate your rider.
+- **Buy & deliver ("pabili")** — the customer picks a restaurant from the list, or *any* store, and writes what to buy
+  (quick-add suggestions, quantities, instructions, optional spending limit). A rider goes there, orders and **pays with their own money**,
+  then delivers. The customer repays the items per the receipt, plus the delivery fee.
+  **The app only computes the delivery fee** (by distance from the store to the customer). No menus, prices or restaurant involvement.
 - **Ride** — motorcycle taxi (Moto, Moto+) and Car: pick pickup/destination (or use GPS), see fares, book, track the rider live, cancel, rate.
-- **Rider mode** — go online, receive delivery & ride requests, accept, navigate (opens Apple/Google Maps), step through pickup → drop-off, earnings dashboard.
+- **Rider mode** — go online, receive buy & deliver and ride requests, accept, navigate (opens Apple/Google Maps).
+  For buy & deliver the rider sees the shopping list, enters the receipt total after paying, and the app shows how much to collect
+  (receipt + delivery fee). Earnings dashboard.
 - **Activity & Account** — order/ride history, profile, saved address.
 
-> ⚠️ This version runs on **demo data stored on the phone**. Restaurants, riders and trip progress are simulated
+> ⚠️ This version runs on **demo data stored on the phone**. Stores, riders and trip progress are simulated
 > (a trip finishes in ~1–2 minutes). To run a real business you need a backend — see "Going live" below.
 
 ## 1. Run it on your phone (5 minutes, free)
@@ -73,7 +78,7 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 
 - **Backend + database** (e.g. Supabase or Firebase): user accounts/OTP login, restaurants & menus, orders, real-time rider location, dispatch (matching nearest rider).
 - **Payments**: GCash/Maya/cards via a gateway such as PayMongo or Xendit.
-- **Separate merchant tools** for restaurants to receive orders.
+- **Receipt photos**: let riders upload a photo of the store receipt so customers can verify the item cost.
 - **Rider verification** (license, OR/CR, NBI clearance) and **push notifications**.
 - **Places search**: replace the preset list in `src/lib/data.ts` with Google Places.
 - **Legal**: motorcycle taxi operation in the Philippines is regulated (LTFRB/DOTr pilot program) — check permits before taking real passengers.
@@ -83,12 +88,11 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 ```
 src/app/            screens (Expo Router — each file is a screen)
   (tabs)/           Home, Food, Ride, Activity, Account
-  restaurant/[id]   menu
-  cart              checkout
+  order             what to buy (shopping list) + delivery fee
   track/[id]        live tracking
   driver            rider mode
   place-search      location picker
 src/lib/            data, pricing, trip simulation, app state
 src/components/     map, cards, buttons
 ```
-Fares & fees: `src/lib/pricing.ts`. Restaurants & places: `src/lib/data.ts`.
+Fares & the delivery fee: `src/lib/pricing.ts` (`deliveryFee`: ₱49 for the first 2 km, then ₱10 per km). Suggested places: `src/lib/data.ts`.

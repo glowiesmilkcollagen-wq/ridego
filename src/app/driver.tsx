@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import MapPreview from '@/components/MapPreview';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
 import { DriverJob, generateJobs, STAGE_STATUS, STAGES } from '@/lib/driver';
@@ -54,7 +54,7 @@ export default function Driver() {
       </View>
 
       {driver.active ? (
-        <ActiveJob job={driver.active} onNext={advanceJob} onNavigate={() => navigate(driver.active!)} onCancel={() =>
+        <ActiveJob key={driver.active.id} job={driver.active} onNext={advanceJob} onNavigate={() => navigate(driver.active!)} onCancel={() =>
           Alert.alert('Drop this job?', 'Frequent cancellations lower your acceptance rate.', [
             { text: 'Keep job', style: 'cancel' },
             { text: 'Drop', style: 'destructive', onPress: declineActive },
@@ -67,12 +67,13 @@ export default function Driver() {
             <Card key={j.id} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <MaterialCommunityIcons name={j.kind === 'food' ? 'food' : 'motorbike'} size={22} color={j.kind === 'food' ? colors.primary : colors.ride} />
-                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'food' ? 'Food delivery' : 'Moto ride'} · {j.km.toFixed(1)} km</Text>
+                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'food' ? 'Buy & deliver' : 'Moto ride'} · {j.km.toFixed(1)} km</Text>
                 <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(j.payout)}</Text>
               </View>
               <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {j.pickup.name}</Text>
               <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {j.dropoff.name}</Text>
-              <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}</Text>
+              {j.items ? <Text style={styles.line}>🛒 {j.items.join(', ')}</Text> : null}
+              <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'food' ? ' · you pay at the store' : ''}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <Button title="Skip" variant="outline" color={colors.muted} style={{ flex: 1 }} onPress={() => setJobs((js) => js.filter((x) => x.id !== j.id))} />
                 <Button title="Accept" color={colors.ride} style={{ flex: 2 }} onPress={() => acceptJob(j)} />
@@ -101,8 +102,20 @@ export default function Driver() {
   );
 }
 
-function ActiveJob({ job, onNext, onNavigate, onCancel }: { job: DriverJob; onNext: () => void; onNavigate: () => void; onCancel: () => void }) {
+function ActiveJob({ job, onNext, onNavigate, onCancel }: {
+  job: DriverJob; onNext: (receipt?: number) => void; onNavigate: () => void; onCancel: () => void;
+}) {
+  const [receipt, setReceipt] = useState('');
   const toPickup = job.stage === 0;
+  const buying = job.kind === 'food' && job.stage === 1;
+  const receiptValue = Number(receipt.replace(/[^0-9.]/g, ''));
+
+  const next = () => {
+    if (!buying) return onNext();
+    if (!receiptValue) return Alert.alert('Enter the receipt total', 'Type how much you paid at the store, as shown on the receipt.');
+    onNext(receiptValue);
+  };
+
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <MapPreview
@@ -115,11 +128,40 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: { job: DriverJob; onNe
       />
       <View style={{ padding: 16 }}>
         <Text style={{ color: colors.ride, fontWeight: '800' }}>{STAGE_STATUS[job.kind][job.stage]}</Text>
-        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{toPickup ? job.pickup.name : job.dropoff.name}</Text>
+        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{job.stage < 2 ? job.pickup.name : job.dropoff.name}</Text>
         <Text style={{ color: colors.muted, marginTop: 4 }}>{job.customer} · {job.detail} · earn {peso(job.payout)}</Text>
+
+        {job.items && job.stage < 2 && (
+          <View style={styles.list}>
+            <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>Shopping list</Text>
+            {job.items.map((i) => <Text key={i} style={{ color: colors.text, paddingVertical: 2 }}>•  {i}</Text>)}
+          </View>
+        )}
+
+        {buying && (
+          <View style={{ marginTop: 12 }}>
+            <Text style={{ color: colors.muted, marginBottom: 6 }}>Receipt total you paid</Text>
+            <View style={styles.receipt}>
+              <Text style={{ fontWeight: '700', color: colors.text }}>₱</Text>
+              <TextInput
+                value={receipt} onChangeText={setReceipt} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.muted}
+                style={{ flex: 1, marginLeft: 6, paddingVertical: 10, fontSize: 16, color: colors.text }}
+              />
+            </View>
+          </View>
+        )}
+
+        {job.kind === 'food' && job.stage === 2 && job.receipt != null && (
+          <View style={styles.collect}>
+            <Text style={{ color: colors.text }}>Collect from customer</Text>
+            <Text style={{ fontWeight: '800', fontSize: 22, color: colors.text, marginTop: 2 }}>{peso(job.receipt + job.fee)}</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>{peso(job.receipt)} items (receipt) + {peso(job.fee)} delivery fee</Text>
+          </View>
+        )}
+
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Button title="Navigate" icon="navigation-variant" variant="outline" color={colors.text} style={{ flex: 1 }} onPress={onNavigate} />
-          <Button title={STAGES[job.kind][job.stage]} color={colors.ride} style={{ flex: 1.4 }} onPress={onNext} />
+          <Button title={STAGES[job.kind][job.stage]} color={colors.ride} style={{ flex: 1.4 }} onPress={next} />
         </View>
         {toPickup && <Button title="Drop job" variant="ghost" color={colors.danger} onPress={onCancel} style={{ marginTop: 6 }} />}
       </View>
@@ -140,5 +182,8 @@ const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },
   line: { marginTop: 3, color: colors.text },
+  list: { backgroundColor: colors.bg, borderRadius: radius.md, padding: 12, marginTop: 12 },
+  receipt: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12 },
+  collect: { backgroundColor: colors.rideSoft, borderRadius: radius.md, padding: 12, marginTop: 12 },
   hist: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
 });

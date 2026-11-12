@@ -38,7 +38,7 @@ export default function Home() {
           <Pressable style={[styles.service, { backgroundColor: colors.primary }]} onPress={() => router.push('/food')}>
             <Text style={styles.serviceEmoji}>🍔</Text>
             <Text style={styles.serviceTitle}>Food</Text>
-            <Text style={styles.serviceSub}>Restaurants delivered fast</Text>
+            <Text style={styles.serviceSub}>We buy it & bring it to you</Text>
           </Pressable>
           <Pressable style={[styles.service, { backgroundColor: colors.ride }]} onPress={() => router.push('/ride')}>
             <Text style={styles.serviceEmoji}>🏍️</Text>
@@ -51,7 +51,7 @@ export default function Home() {
           <MaterialCommunityIcons name="card-account-details-star-outline" size={28} color={colors.text} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a RideGo rider</Text>
-            <Text style={{ color: colors.muted, marginTop: 2 }}>Deliver food or give rides on your own schedule</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>Buy & deliver or give rides on your own schedule</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>

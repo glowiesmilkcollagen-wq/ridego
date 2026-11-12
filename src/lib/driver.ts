@@ -8,9 +8,14 @@ export type DriverJob = {
   pickup: { name: string; location: LatLng };
   dropoff: { name: string; location: LatLng };
   km: number;
+  /** What the customer is charged by the app (delivery fee or ride fare). */
+  fee: number;
   payout: number;
   customer: string;
   detail: string;
+  /** Buy-and-deliver: what to buy, and what the rider actually paid at the store. */
+  items?: string[];
+  receipt?: number;
   /** 0 = heading to pickup, 1 = picked up / trip started, 2 = arriving at drop-off, 3 = completed */
   stage: number;
   createdAt: number;
@@ -21,11 +26,11 @@ const CUSTOMERS = ['Anna L.', 'Bea C.', 'Miguel P.', 'Trish G.', 'Kevin Y.', 'Li
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
 export const STAGES: Record<DriverJob['kind'], string[]> = {
-  food: ['Arrived at restaurant', 'Order picked up', 'Order delivered'],
+  food: ['Arrived at store', 'Items bought', 'Delivered & paid'],
   ride: ['Arrived at pickup', 'Start trip', 'Complete trip'],
 };
 export const STAGE_STATUS: Record<DriverJob['kind'], string[]> = {
-  food: ['Head to the restaurant', 'Waiting for the order', 'Deliver to customer'],
+  food: ['Head to the store', 'Order and pay for the items', 'Deliver and collect payment'],
   ride: ['Head to pickup point', 'Passenger boarding', 'Drive to destination'],
 };
 
@@ -37,13 +42,16 @@ export function generateJobs(count = 4): DriverJob[] {
     if (food) {
       const r = pick(RESTAURANTS);
       const km = roadKm(r.location, drop.location);
+      const items = [...r.favorites].sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3));
       return {
         id: `J-${Date.now().toString(36)}-${i}`, kind: 'food', km, stage: 0, createdAt: Date.now(),
         pickup: { name: r.name, location: r.location },
         dropoff: { name: `${drop.name}, ${drop.area}`, location: drop.location },
-        payout: Math.round(deliveryFee(km) * RIDER_SHARE + 25),
+        fee: deliveryFee(km),
+        payout: Math.round(deliveryFee(km) * RIDER_SHARE),
         customer: pick(CUSTOMERS),
-        detail: `${1 + Math.floor(Math.random() * 4)} items`,
+        detail: `Buy ${items.length} item${items.length > 1 ? 's' : ''}`,
+        items,
       };
     }
     let from = pick(PLACES);
@@ -54,6 +62,7 @@ export function generateJobs(count = 4): DriverJob[] {
       id: `J-${Date.now().toString(36)}-${i}`, kind: 'ride', km, stage: 0, createdAt: Date.now(),
       pickup: { name: `${from.name}, ${from.area}`, location: from.location },
       dropoff: { name: `${drop.name}, ${drop.area}`, location: drop.location },
+      fee: rideFare(km, type),
       payout: Math.round(rideFare(km, type) * RIDER_SHARE),
       customer: pick(CUSTOMERS),
       detail: type === 'moto' ? 'Moto · 1 passenger' : 'Moto+ · 1 passenger',
