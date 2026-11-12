@@ -26,4 +26,6 @@ export function deliveryFee(km: number) {
   return Math.round(49 + Math.max(0, km - 2) * 10);
 }
 /** Riders keep this share of every fee charged to customers; the rest goes to the company. */
-export const RIDER_SHARE = 0.2;
+export const RIDER_SHARE = 0.8;
+/** Rider share as text, e.g. "80%". */
+export const RIDER_SHARE_TEXT = `${Math.round(RIDER_SHARE * 100)}%`;

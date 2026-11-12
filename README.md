@@ -27,12 +27,12 @@
   and your share; accept; follow the steps (arrived → picked up / bought → delivered). **Navigate** opens
   Google Maps, Waze or Apple Maps to the pickup, then to the drop-off. For pabili, enter the receipt total after paying.
   The app shows exactly what to collect: the receipt for pabili items, plus the fee only if the customer pays cash.
-- **Earnings** — today / this week / all time: fees charged to customers, **your 20% share**, cash collected and
+- **Earnings** — today / this week / all time: fees charged to customers, **your 80% share**, cash collected and
   **cash to remit to RideGo**, and every job grouped by day.
 - **Profile** — name, mobile number, vehicle and plate.
 
-**Rider share: 20% of every fee charged to customers** (`RIDER_SHARE` in `src/lib/pricing.ts`).
-Cash: the rider holds the whole fee, keeps 20% and remits 80%. GCash / card: RideGo collects and pays the rider 20%.
+**Rider share: 80% of every fee charged to customers** (`RIDER_SHARE` in `src/lib/pricing.ts`).
+Cash: the rider holds the whole fee, keeps 80% and remits 20%. GCash / card: RideGo collects and pays the rider 80%.
 
 > ⚠️ This version runs on **demo data stored on each phone**. The two apps are **not connected yet**: the rider app
 > receives simulated requests, and customer orders are handled by simulated riders (a trip finishes in ~1–2 minutes).

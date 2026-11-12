@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MapPreview from '@/components/MapPreview';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
 import { DriverJob, generateJobs, jobsSince, STAGE_STATUS, STAGES, summarize, withRoadRoute } from '@/lib/driver';
+import { RIDER_SHARE_TEXT } from '@/lib/pricing';
 import { useStore } from '@/lib/store';
 import { CARGO, PAYMENT_LABELS } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
@@ -80,7 +81,7 @@ export default function Jobs() {
               <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {j.dropoff.name}</Text>
               {j.items ? <Text style={styles.line}>🛒 {j.items.join(', ')}</Text> : null}
               <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'pabili' ? ' · you pay at the store' : ''}</Text>
-              <Text style={[styles.line, { color: colors.muted }]}>Customer fee {peso(j.fee)} ({PAYMENT_LABELS[j.payment]}) · your 20% share {peso(j.payout)}</Text>
+              <Text style={[styles.line, { color: colors.muted }]}>Customer fee {peso(j.fee)} ({PAYMENT_LABELS[j.payment]}) · your {RIDER_SHARE_TEXT} share {peso(j.payout)}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <Button title="Skip" variant="outline" color={colors.muted} style={{ flex: 1 }} onPress={() => setJobs((js) => js.filter((x) => x.id !== j.id))} />
                 <Button title="Accept" color={colors.ride} style={{ flex: 2 }} onPress={() => acceptJob(j)} />
@@ -186,7 +187,7 @@ function Collect({ job }: { job: DriverJob }) {
       <Text style={{ color: colors.muted, marginTop: 2 }}>
         {parts.length ? parts.join(' + ') : `Nothing to collect — fee paid by ${PAYMENT_LABELS[job.payment]}`}
       </Text>
-      {fee > 0 && <Text style={{ color: colors.muted, marginTop: 2 }}>Keep {peso(job.payout)} (20%), remit {peso(job.fee - job.payout)} to RideGo</Text>}
+      {fee > 0 && <Text style={{ color: colors.muted, marginTop: 2 }}>Keep {peso(job.payout)} ({RIDER_SHARE_TEXT}), remit {peso(job.fee - job.payout)} to RideGo</Text>}
     </View>
   );
 }
