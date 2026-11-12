@@ -10,7 +10,10 @@ import { DriverJob } from './driver';
 type Profile = { name: string; phone: string };
 /** The buy-for-me order being drafted: where to buy and what to buy. */
 type Errand = { store: Stop | null; storeId: string | null; items: ErrandItem[] };
-type DriverState = { online: boolean; earnings: number; completed: number; active: DriverJob | null; history: DriverJob[] };
+export type RiderProfile = { name: string; phone: string; vehicle: Vehicle; plate: string };
+type DriverState = {
+  online: boolean; earnings: number; completed: number; active: DriverJob | null; history: DriverJob[]; profile: RiderProfile;
+};
 
 type State = {
   ready: boolean;
@@ -31,12 +34,15 @@ const INITIAL: State = {
   errand: EMPTY_ERRAND,
   trips: [],
   payment: 'cash',
-  driver: { online: false, earnings: 0, completed: 0, active: null, history: [] },
+  driver: {
+    online: false, earnings: 0, completed: 0, active: null, history: [],
+    profile: { name: 'Rider', phone: '', vehicle: 'moto', plate: '' },
+  },
   pasugoDraft: { pickup: null, dropoff: null },
 };
 
-// v4: food orders renamed to pabili; older saved data is not compatible.
-const KEY = 'ridego-state-v4';
+// v5: rider jobs gained payment method and the rider share changed; older saved data is not compatible.
+const KEY = 'ridego-state-v5';
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -143,6 +149,7 @@ function useStoreValue() {
 
       // Rider (driver) mode
       setOnline: (online: boolean) => update((s) => ({ driver: { ...s.driver, online } })),
+      setRiderProfile: (profile: RiderProfile) => update((s) => ({ driver: { ...s.driver, profile } })),
       acceptJob: (job: DriverJob) => update((s) => ({ driver: { ...s.driver, active: { ...job, stage: 0 } } })),
       /** Moves the active job to its next stage. `receipt` is what the rider paid at the store (buy-and-deliver only). */
       advanceJob: (receipt?: number) =>
@@ -156,7 +163,7 @@ function useStoreValue() {
               active: null,
               earnings: s.driver.earnings + job.payout,
               completed: s.driver.completed + 1,
-              history: [{ ...job, stage: 3, completedAt: Date.now() }, ...s.driver.history].slice(0, 50),
+              history: [{ ...job, stage: 3, completedAt: Date.now(), path: undefined }, ...s.driver.history].slice(0, 500),
             },
           };
         }),

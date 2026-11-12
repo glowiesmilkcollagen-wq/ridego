@@ -44,7 +44,7 @@ export default function Account() {
         <Card style={{ paddingVertical: 4 }}>
           <Item icon="home-outline" label="Saved address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
           <Item icon="receipt-text-outline" label="Orders & rides" sub={`${state.trips.length} total`} onPress={() => router.push('/activity')} />
-          <Item icon="card-account-details-star-outline" label="Rider mode" sub="Earn with pabili and pasugo jobs" onPress={() => router.push('/driver')} last />
+          <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={() => Alert.alert('Become a RideGo rider', 'Riders use the separate RideGo Rider app to receive jobs, navigate and track earnings. It will be available on the App Store and Google Play.')} last />
         </Card>
 
         <Card>

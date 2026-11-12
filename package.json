@@ -31,7 +31,10 @@
     "typecheck": "tsc --noEmit",
     "build:android": "npx eas-cli@latest build -p android --profile production",
     "build:ios": "npx eas-cli@latest build -p ios --profile production",
-    "build:preview": "npx eas-cli@latest build -p android --profile preview"
+    "build:preview": "npx eas-cli@latest build -p android --profile preview",
+    "start:rider": "APP_VARIANT=rider expo start",
+    "build:rider:android": "npx eas-cli@latest build -p android --profile rider-preview",
+    "build:rider:ios": "npx eas-cli@latest build -p ios --profile rider-production"
   },
   "private": true
 }

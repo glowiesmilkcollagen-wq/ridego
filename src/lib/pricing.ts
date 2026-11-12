@@ -25,4 +25,5 @@ export function pasugoFee(km: number, vehicle: Vehicle) {
 export function deliveryFee(km: number) {
   return Math.round(49 + Math.max(0, km - 2) * 10);
 }
-export const RIDER_SHARE = 0.8;
+/** Riders keep this share of every fee charged to customers; the rest goes to the company. */
+export const RIDER_SHARE = 0.2;

@@ -39,9 +39,11 @@ export function SectionTitle({ children, style }: { children: React.ReactNode; s
   return <Text style={[styles.section, style]}>{children}</Text>;
 }
 
-export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: string }) {
+export function Chip({ label, active, onPress, icon, color = colors.primary }: {
+  label: string; active?: boolean; onPress?: () => void; icon?: string; color?: string;
+}) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+    <Pressable onPress={onPress} style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}>
       {icon ? <Text style={{ marginRight: 6 }}>{icon}</Text> : null}
       <Text style={{ color: active ? '#fff' : colors.text, fontWeight: '600' }}>{label}</Text>
     </Pressable>

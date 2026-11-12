@@ -12,6 +12,18 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "rider-preview": {
+      "extends": "preview",
+      "env": {
+        "APP_VARIANT": "rider"
+      }
+    },
+    "rider-production": {
+      "extends": "production",
+      "env": {
+        "APP_VARIANT": "rider"
+      }
     }
   },
   "submit": {

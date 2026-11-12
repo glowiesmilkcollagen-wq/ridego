@@ -21,7 +21,6 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="order" options={{ title: 'What to buy' }} />
           <Stack.Screen name="track/[id]" options={{ title: 'Tracking' }} />
-          <Stack.Screen name="driver" options={{ title: 'Rider mode' }} />
           <Stack.Screen name="place-search" options={{ title: 'Choose location', presentation: 'modal' }} />
         </Stack>
       </StoreProvider>

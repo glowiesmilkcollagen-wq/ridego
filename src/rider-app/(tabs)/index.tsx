@@ -1,14 +1,15 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapPreview from '@/components/MapPreview';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
-import { DriverJob, generateJobs, STAGE_STATUS, STAGES, withRoadRoute } from '@/lib/driver';
+import { DriverJob, generateJobs, jobsSince, STAGE_STATUS, STAGES, summarize, withRoadRoute } from '@/lib/driver';
 import { useStore } from '@/lib/store';
-import { CARGO } from '@/lib/trips';
+import { CARGO, PAYMENT_LABELS } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
-export default function Driver() {
+export default function Jobs() {
   const { state, setOnline, acceptJob, advanceJob, declineActive } = useStore();
   const { driver } = state;
   const [jobs, setJobs] = useState<DriverJob[]>([]);
@@ -31,18 +32,12 @@ export default function Driver() {
     };
   }, [driver.online, driver.active]);
 
-  const today = new Date().toDateString();
-  const todayJobs = driver.history.filter((j) => j.completedAt && new Date(j.completedAt).toDateString() === today);
-
-  const navigate = (job: DriverJob) => {
-    const target = job.stage === 0 ? job.pickup.location : job.dropoff.location;
-    const ll = `${target.latitude},${target.longitude}`;
-    const url = Platform.OS === 'ios' ? `http://maps.apple.com/?daddr=${ll}` : `google.navigation:q=${ll}`;
-    Linking.openURL(url).catch(() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${ll}`));
-  };
+  const today = summarize(jobsSince(driver.history, 'today'));
 
   return (
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
+      <Text style={styles.h1}>Hi {driver.profile.name.split(' ')[0]}</Text>
       <Card style={[styles.status, driver.online && { backgroundColor: colors.rideSoft, borderColor: colors.ride }]}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{driver.online ? 'You are online' : 'You are offline'}</Text>
@@ -59,13 +54,13 @@ export default function Driver() {
       </Card>
 
       <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Stat label="Today" value={peso(todayJobs.reduce((s, j) => s + j.payout, 0))} />
-        <Stat label="Total earned" value={peso(driver.earnings)} />
-        <Stat label="Jobs done" value={String(driver.completed)} />
+        <Stat label="Earned today" value={peso(today.earned)} />
+        <Stat label="Jobs today" value={String(today.jobs)} />
+        <Stat label="Cash to remit" value={peso(today.toRemit)} />
       </View>
 
       {driver.active ? (
-        <ActiveJob key={driver.active.id} job={driver.active} onNext={advanceJob} onNavigate={() => navigate(driver.active!)} onCancel={() =>
+        <ActiveJob key={driver.active.id} job={driver.active} onNext={advanceJob} onNavigate={() => openNavigation(driver.active!)} onCancel={() =>
           Alert.alert('Drop this job?', 'Frequent cancellations lower your acceptance rate.', [
             { text: 'Keep job', style: 'cancel' },
             { text: 'Drop', style: 'destructive', onPress: declineActive },
@@ -85,6 +80,7 @@ export default function Driver() {
               <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {j.dropoff.name}</Text>
               {j.items ? <Text style={styles.line}>🛒 {j.items.join(', ')}</Text> : null}
               <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'pabili' ? ' · you pay at the store' : ''}</Text>
+              <Text style={[styles.line, { color: colors.muted }]}>Customer fee {peso(j.fee)} ({PAYMENT_LABELS[j.payment]}) · your 20% share {peso(j.payout)}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <Button title="Skip" variant="outline" color={colors.muted} style={{ flex: 1 }} onPress={() => setJobs((js) => js.filter((x) => x.id !== j.id))} />
                 <Button title="Accept" color={colors.ride} style={{ flex: 2 }} onPress={() => acceptJob(j)} />
@@ -97,20 +93,24 @@ export default function Driver() {
         <Empty icon="sleep" title="Offline" subtitle="Switch on to see pabili and pasugo requests near you." />
       )}
 
-      {driver.history.length > 0 && (
-        <View>
-          <SectionTitle>Recent jobs</SectionTitle>
-          {driver.history.slice(0, 10).map((j) => (
-            <View key={j.id + j.completedAt} style={styles.hist}>
-              <MaterialCommunityIcons name={(j.kind === 'pabili' ? 'basket-outline' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={18} color={colors.muted} />
-              <Text style={{ flex: 1, marginLeft: 8, color: colors.text }} numberOfLines={1}>{j.dropoff.name}</Text>
-              <Text style={{ fontWeight: '700', color: colors.text }}>{peso(j.payout)}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </ScrollView>
+    </SafeAreaView>
   );
+}
+
+/** Lets the rider pick a navigation app; each falls back to Google Maps in the browser. */
+function openNavigation(job: DriverJob) {
+  const target = job.stage === 0 ? job.pickup.location : job.dropoff.location;
+  const ll = `${target.latitude},${target.longitude}`;
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`;
+  const open = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(web));
+  const apps = [
+    { text: 'Google Maps', onPress: () => open(Platform.OS === 'ios' ? `comgooglemaps://?daddr=${ll}&directionsmode=driving` : `google.navigation:q=${ll}`) },
+    { text: 'Waze', onPress: () => open(`https://waze.com/ul?ll=${ll}&navigate=yes`) },
+    ...(Platform.OS === 'ios' ? [{ text: 'Apple Maps', onPress: () => open(`http://maps.apple.com/?daddr=${ll}&dirflg=d`) }] : []),
+    { text: 'Cancel', style: 'cancel' as const },
+  ];
+  Alert.alert(`Navigate to ${job.stage === 0 ? 'pickup' : 'drop-off'}`, job.stage === 0 ? job.pickup.name : job.dropoff.name, apps);
 }
 
 function ActiveJob({ job, onNext, onNavigate, onCancel }: {
@@ -162,13 +162,7 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
           </View>
         )}
 
-        {job.kind === 'pabili' && job.stage === 2 && job.receipt != null && (
-          <View style={styles.collect}>
-            <Text style={{ color: colors.text }}>Collect from customer</Text>
-            <Text style={{ fontWeight: '800', fontSize: 22, color: colors.text, marginTop: 2 }}>{peso(job.receipt + job.fee)}</Text>
-            <Text style={{ color: colors.muted, marginTop: 2 }}>{peso(job.receipt)} items (receipt) + {peso(job.fee)} delivery fee</Text>
-          </View>
-        )}
+        {job.stage === 2 && <Collect job={job} />}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Button title="Navigate" icon="navigation-variant" variant="outline" color={colors.text} style={{ flex: 1 }} onPress={onNavigate} />
@@ -177,6 +171,23 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
         {toPickup && <Button title="Drop job" variant="ghost" color={colors.danger} onPress={onCancel} style={{ marginTop: 6 }} />}
       </View>
     </Card>
+  );
+}
+
+/** What the rider collects at drop-off: the receipt for pabili items, plus the fee only if paid in cash. */
+function Collect({ job }: { job: DriverJob }) {
+  const items = job.kind === 'pabili' ? job.receipt ?? 0 : 0;
+  const fee = job.payment === 'cash' ? job.fee : 0;
+  const parts = [items ? `${peso(items)} items (receipt)` : '', fee ? `${peso(fee)} fee (cash)` : ''].filter(Boolean);
+  return (
+    <View style={styles.collect}>
+      <Text style={{ color: colors.text }}>Collect from customer</Text>
+      <Text style={{ fontWeight: '800', fontSize: 22, color: colors.text, marginTop: 2 }}>{peso(items + fee)}</Text>
+      <Text style={{ color: colors.muted, marginTop: 2 }}>
+        {parts.length ? parts.join(' + ') : `Nothing to collect — fee paid by ${PAYMENT_LABELS[job.payment]}`}
+      </Text>
+      {fee > 0 && <Text style={{ color: colors.muted, marginTop: 2 }}>Keep {peso(job.payout)} (20%), remit {peso(job.fee - job.payout)} to RideGo</Text>}
+    </View>
   );
 }
 
@@ -190,6 +201,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  h1: { fontSize: 26, fontWeight: '800', color: colors.text },
   status: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },
   line: { marginTop: 3, color: colors.text },

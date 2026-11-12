@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
 import TripCard from '@/components/TripCard';
@@ -55,11 +55,11 @@ export default function Home() {
           </Pressable>
         </View>
 
-        <Pressable style={styles.driverBanner} onPress={() => router.push('/driver')}>
+        <Pressable style={styles.driverBanner} onPress={() => Alert.alert('Become a RideGo rider', 'Riders use the separate RideGo Rider app to receive jobs, navigate and track earnings. It will be available on the App Store and Google Play.')}>
           <MaterialCommunityIcons name="card-account-details-star-outline" size={28} color={colors.text} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a RideGo rider</Text>
-            <Text style={{ color: colors.muted, marginTop: 2 }}>Do pabili and pasugo jobs on your own schedule</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>Get the RideGo Rider app and earn on your own schedule</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>
