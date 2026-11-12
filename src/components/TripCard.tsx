@@ -2,25 +2,27 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CARGO, getProgress, Trip } from '@/lib/trips';
+import { isOpen, Order } from '@/lib/api';
+import { CARGO, statusText } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
-export default function TripCard({ trip, now }: { trip: Trip; now: number }) {
-  const p = getProgress(trip, now);
-  const pabili = trip.kind === 'pabili';
-  const status = p.cancelled ? 'Cancelled' : p.phase.label;
-  const statusColor = p.cancelled ? colors.danger : p.done ? colors.muted : pabili ? colors.primary : colors.ride;
-  const title = pabili ? trip.pickup.name : `${CARGO[trip.cargo ?? 'parcel'].label} · from ${trip.pickup.name}`;
-  const sub = pabili ? `${trip.items?.reduce((s, l) => s + l.qty, 0)} items` : `${trip.km.toFixed(1)} km · ${new Date(trip.createdAt).toLocaleDateString()}`;
+/** One order in the customer's lists. */
+export default function TripCard({ order: o }: { order: Order }) {
+  const pabili = o.kind === 'pabili';
+  const cargo = CARGO[o.cargo ?? 'parcel'];
+  const statusColor = o.status === 'cancelled' ? colors.danger : !isOpen(o) ? colors.muted : pabili ? colors.primary : colors.ride;
+  const title = pabili ? o.pickup_name : `${cargo.label} · from ${o.pickup_name}`;
+  const count = o.items?.reduce((s, l) => s + l.qty, 0) ?? 0;
+  const sub = `${pabili ? `${count} item${count === 1 ? '' : 's'}` : `${Number(o.km).toFixed(1)} km`} · ${new Date(o.created_at).toLocaleDateString()}`;
   return (
-    <Pressable onPress={() => router.push(`/track/${trip.id}`)} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}>
+    <Pressable onPress={() => router.push(`/track/${o.id}`)} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}>
       <View style={[styles.icon, { backgroundColor: pabili ? colors.primarySoft : colors.rideSoft }]}>
-        <MaterialCommunityIcons name={(pabili ? 'basket-outline' : CARGO[trip.cargo ?? 'parcel'].icon) as any} size={22} color={pabili ? colors.primary : colors.ride} />
+        <MaterialCommunityIcons name={(pabili ? 'basket-outline' : cargo.icon) as any} size={22} color={pabili ? colors.primary : colors.ride} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(trip.total)}{pabili ? ' delivery' : ''}</Text>
-        <Text style={[styles.status, { color: statusColor }]}>{status}</Text>
+        <Text style={styles.sub} numberOfLines={1}>{sub} · {peso(Number(o.fee))}{pabili ? ' delivery' : ''}</Text>
+        <Text style={[styles.status, { color: statusColor }]}>{statusText(o).label}</Text>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
     </Pressable>

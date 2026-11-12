@@ -3,14 +3,15 @@ import { FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TripCard from '@/components/TripCard';
 import { Chip, Empty } from '@/components/ui';
-import { useNow, useStore } from '@/lib/store';
+import { useMyOrders } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { colors } from '@/lib/theme';
 
 export default function Activity() {
-  const { state } = useStore();
-  const now = useNow(2000);
+  const { userId } = useAuth();
+  const orders = useMyOrders(userId);
   const [filter, setFilter] = useState<'all' | 'pabili' | 'pasugo'>('all');
-  const trips = state.trips.filter((t) => filter === 'all' || t.kind === filter);
+  const trips = (orders.data ?? []).filter((o) => filter === 'all' || o.kind === filter);
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <FlatList
@@ -27,7 +28,9 @@ export default function Activity() {
             </View>
           </View>
         }
-        renderItem={({ item }) => <TripCard trip={item} now={now} />}
+        renderItem={({ item }) => <TripCard order={item} />}
+        refreshing={false}
+        onRefresh={orders.refresh}
         ListEmptyComponent={<Empty icon="receipt-text-outline" title="Nothing here yet" subtitle="Your pabili orders and pasugo requests will show up here." />}
       />
     </SafeAreaView>

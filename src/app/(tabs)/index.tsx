@@ -6,27 +6,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
 import TripCard from '@/components/TripCard';
 import { SectionTitle } from '@/components/ui';
-import { CATEGORIES, STORES } from '@/lib/data';
-import { getProgress } from '@/lib/trips';
+import { isOpen, useMyOrders, useStores } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { CATEGORIES } from '@/lib/data';
 import { useStoreDistances } from '@/lib/routing';
-import { useNow, useStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
-
-/** Best-rated store of each kind, so Home shows that pabili is not only for food. */
-const TOP_PER_CATEGORY = CATEGORIES.flatMap((c) => {
-  const best = STORES.filter((s) => s.category === c.key).sort((a, b) => b.rating - a.rating)[0];
-  return best ? [best] : [];
-});
 
 export default function Home() {
   const { state } = useStore();
-  const kmFor = useStoreDistances(state.home.location);
-  const now = useNow(2000);
-  const active = state.trips.filter((t) => {
-    const p = getProgress(t, now);
-    return !p.done && !p.cancelled;
+  const { userId, profile } = useAuth();
+  const { stores } = useStores();
+  const orders = useMyOrders(userId);
+  const kmFor = useStoreDistances(stores, state.home.location);
+  const active = (orders.data ?? []).filter(isOpen);
+  const first = (profile?.full_name || 'there').split(' ')[0];
+  // Best-rated store of each kind, so Home shows that pabili is not only for food.
+  const topPerCategory = CATEGORIES.flatMap((c) => {
+    const best = stores.filter((s) => s.category === c.key).sort((a, b) => b.rating - a.rating)[0];
+    return best ? [best] : [];
   });
-  const first = state.profile.name.split(' ')[0];
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -67,14 +66,14 @@ export default function Home() {
         {active.length > 0 && (
           <View style={{ marginTop: 20 }}>
             <SectionTitle>In progress</SectionTitle>
-            {active.map((t) => <TripCard key={t.id} trip={t} now={now} />)}
+            {active.map((o) => <TripCard key={o.id} order={o} />)}
           </View>
         )}
 
         <SectionTitle style={{ marginTop: 20 }}>Pabili from places near you</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          {TOP_PER_CATEGORY.map((r) => (
-            <StoreCard key={r.id} r={r} km={kmFor(r.id)} compact />
+          {topPerCategory.map((r) => (
+            <StoreCard key={r.id} r={r} km={kmFor(r)} compact />
           ))}
         </ScrollView>
       </ScrollView>

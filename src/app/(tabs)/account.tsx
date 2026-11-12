@@ -4,18 +4,34 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, SectionTitle } from '@/components/ui';
+import { signOut, updateProfile, useMyOrders } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { useStore } from '@/lib/store';
+import { errorText } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
 export default function Account() {
-  const { state, setProfile, resetAll } = useStore();
+  const { state } = useStore();
+  const { session, userId, profile, refreshProfile } = useAuth();
+  const orders = useMyOrders(userId);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(state.profile.name);
-  const [phone, setPhone] = useState(state.profile.phone);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const displayName = profile?.full_name || 'Your name';
 
-  const save = () => {
-    setProfile({ name: name.trim() || 'Guest', phone: phone.trim() });
-    setEditing(false);
+  const edit = () => {
+    setName(profile?.full_name ?? '');
+    setPhone(profile?.phone ?? '');
+    setEditing(true);
+  };
+  const save = async () => {
+    try {
+      await updateProfile(userId!, name, phone);
+      refreshProfile();
+      setEditing(false);
+    } catch (e) {
+      Alert.alert('Could not save', errorText(e));
+    }
   };
 
   return (
@@ -31,34 +47,34 @@ export default function Account() {
             </View>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={styles.avatar}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>{state.profile.name[0]?.toUpperCase()}</Text></View>
+              <View style={styles.avatar}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>{displayName[0]?.toUpperCase()}</Text></View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{state.profile.name}</Text>
-                <Text style={{ color: colors.muted }}>{state.profile.phone || 'Add your mobile number'}</Text>
+                <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{displayName}</Text>
+                <Text style={{ color: colors.muted }}>{profile?.phone || 'Add your mobile number'} · {session?.user.email}</Text>
               </View>
-              <Pressable onPress={() => setEditing(true)}><Text style={{ color: colors.primary, fontWeight: '700' }}>Edit</Text></Pressable>
+              <Pressable onPress={edit}><Text style={{ color: colors.primary, fontWeight: '700' }}>Edit</Text></Pressable>
             </View>
           )}
         </Card>
 
         <Card style={{ paddingVertical: 4 }}>
           <Item icon="home-outline" label="Saved address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
-          <Item icon="receipt-text-outline" label="Orders & rides" sub={`${state.trips.length} total`} onPress={() => router.push('/activity')} />
+          <Item icon="receipt-text-outline" label="Orders & rides" sub={`${orders.data?.length ?? 0} total`} onPress={() => router.push('/activity')} />
           <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={() => Alert.alert('Become a RideGo rider', 'Riders use the separate RideGo Rider app to receive jobs, navigate and track earnings. It will be available on the App Store and Google Play.')} last />
         </Card>
 
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo v1.3 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. This build runs on demo data: riders and trip progress are simulated on the device.
+            RideGo v2.0 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
           </Text>
         </Card>
 
         <Button
-          title="Reset app data" variant="ghost" color={colors.danger}
-          onPress={() => Alert.alert('Reset all data?', 'Clears your cart, orders, rides and rider earnings.', [
+          title="Log out" variant="ghost" color={colors.danger}
+          onPress={() => Alert.alert('Log out?', '', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Reset', style: 'destructive', onPress: resetAll },
+            { text: 'Log out', style: 'destructive', onPress: signOut },
           ])}
         />
       </ScrollView>

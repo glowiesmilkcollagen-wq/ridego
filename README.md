@@ -1,139 +1,107 @@
-# RideGo — Pabili (buy & deliver) + Pasugo (pick up & deliver)
+# RideGo — Pabili & Pasugo
 
-**Two apps** for **iPhone and Android** from one codebase (Expo / React Native):
+Three apps from one codebase (Expo / React Native), connected through one **Supabase** database:
 
-| App | Who uses it | Screens | Run | App ID |
+| App | For | Runs on | Screens | Start it |
 |---|---|---|---|---|
-| **RideGo** | customers | `src/app` | `npx expo start` | `com.ajaridego.ridego` |
-| **RideGo Rider** | riders | `src/rider-app` | `npm run start:rider` | `com.ajaridego.ridego.rider` |
+| **RideGo** | customers | iPhone, Android | `src/app` | `npx expo start` |
+| **RideGo Rider** | riders | iPhone, Android | `src/rider-app` | `npm run start:rider` |
+| **RideGo Admin** | you | web browser | `src/admin-app` | `npm run start:admin` |
 
-`app.config.ts` switches between them with `APP_VARIANT=rider`. Both share `src/lib` and `src/components`.
+`app.config.ts` picks the app with `APP_VARIANT` (`rider`, `admin`, or unset for customers). Shared code is in `src/lib` and `src/components`.
 
-### RideGo (customer app)
+## What each app does
 
-- **Pabili** — buy **anything**: food, medicine, groceries, convenience-store items, hardware, flowers, pet supplies.
-  The customer picks a suggested store (filter by type), or *any* store, and writes what to buy
-  (quick-add suggestions, quantities, instructions, optional spending limit). A rider goes there, orders and **pays with their own money**,
-  then delivers. The customer repays the items per the receipt, plus the delivery fee.
-  **The app only computes the delivery fee** (by distance from the store to the customer). No menus, prices or store involvement. Pharmacies show a reminder that prescription medicines need a valid prescription.
-- **Pasugo** — ask a rider to pick something up at one place and bring it to you or anywhere: a **document / folder**,
-  a **bag / package**, or a **person**. Set pickup and drop-off (drop-off defaults to your address), describe what or who,
-  add the contact at the pickup and an optional receiver, choose **Motorcycle** or **Car**, see the fee, book, and track the rider live.
-- **Activity & Account** — order and pasugo history, profile, saved address.
+**RideGo (customers)**
+- **Pabili** — buy anything (food, medicine, groceries, hardware…) from a suggested store or *any* store. Write the shopping list;
+  a rider buys it with their own money and brings it. The customer repays the receipt amount plus the delivery fee — **the app only charges the delivery fee.**
+- **Pasugo** — a rider picks up a document, a bag, or a person and brings it to you or anywhere. Motorcycle or car.
+- Promo codes, live tracking with the rider's real GPS position, call/text the rider, cancel (before the rider starts), rate.
+- Pays in **cash** for now (GCash/card show as "coming soon").
 
-### RideGo Rider (rider app)
+**RideGo Rider**
+- Sign up → RideGo approves → go online → jobs appear live → accept → step through (arrived → bought/picked up → delivered).
+- **Navigate** with Google Maps, Waze or Apple Maps. Calls the customer / pickup contact / receiver.
+- Shares GPS while online so customers can follow the rider.
+- Shows exactly what to collect, and **earnings**: today / week / all time, the rider's share, and how much cash they owe RideGo.
 
-- **Jobs** — go online, see incoming pabili and pasugo requests with distance, the customer's fee and payment method,
-  and your share; accept; follow the steps (arrived → picked up / bought → delivered). **Navigate** opens
-  Google Maps, Waze or Apple Maps to the pickup, then to the drop-off. For pabili, enter the receipt total after paying.
-  The app shows exactly what to collect: the receipt for pabili items, plus the fee only if the customer pays cash.
-- **Earnings** — today / this week / all time: fees charged to customers, **your 80% share**, cash collected and
-  **cash to remit to RideGo**, and every job grouped by day.
-- **Profile** — name, mobile number, vehicle and plate.
+**RideGo Admin (dashboard)**
+- **Overview** reports: live orders, riders online, delivered/cancelled, fees, rider earnings, **company commission**, promo cost, by day and by rider.
+- **Orders** (live, with details and cancel) · **Riders** (approve / reject / suspend) · **Payments** (each rider's balance; record cash remittances and payouts)
+- **Stores** (add/edit/hide suggested stores) · **Fees & commission** (rider share and every price, with preview) · **Promotions** (promo codes).
 
-**Rider share: 80% of every fee charged to customers** (`RIDER_SHARE` in `src/lib/pricing.ts`).
-Cash: the rider holds the whole fee, keeps 80% and remits 20%. GCash / card: RideGo collects and pays the rider 80%.
+### Money rules
+- **Riders keep 80% of every fee** (change it in Admin → Fees & commission). The share is saved on each order, so changes only affect new orders.
+- Fees are calculated **on the server** from distance and the admin's prices — the apps can't change them.
+- Promo discounts come out of RideGo's 20%; riders still earn 80% of the full fee.
+- Cash: the rider collects the fee, keeps their share, and owes RideGo the rest until the admin records a remittance.
 
-> ⚠️ This version runs on **demo data stored on each phone**. The two apps are **not connected yet**: the rider app
-> receives simulated requests, and customer orders are handled by simulated riders (a trip finishes in ~1–2 minutes).
-> Connecting them so a customer's order reaches a real rider needs a backend — see "Going live" below.
+## 1. Connect the database (once)
 
-## 1. Run it on your phone (5 minutes, free)
+1. Create a free project at [supabase.com](https://supabase.com) (region: Southeast Asia / Singapore).
+2. **SQL Editor → New query**: paste all of [`supabase/schema.sql`](supabase/schema.sql) → **Run**. Then do the same with [`supabase/seed.sql`](supabase/seed.sql) (starter stores).
+3. **Authentication → Sign In / Providers → Email**: turn off **Confirm email** (or keep it on and confirm by email).
+4. **Project Settings → API**: copy the **Project URL** and the **anon / publishable key** into a file named `.env` in this folder
+   (see [`.env.example`](.env.example)). Never put the `service_role` / secret key in the apps.
 
-You need a computer with [Node.js](https://nodejs.org) (LTS version) installed. Open a terminal and run:
+### Make yourself admin
+Sign up once in the customer app (or create a user under **Authentication → Users**), then run in the SQL Editor:
+```sql
+update public.profiles set role = 'admin'
+where id = (select id from auth.users where email = 'you@example.com');
+```
+
+## 2. Run the apps on your phone (Expo Go)
 
 ```bash
-git clone https://github.com/glowiesmilkcollagen-wq/ridego
-cd ridego
 npm install
-npx expo start
+npx expo start              # customer app — scan the QR code with your phone
+npm run start:rider         # rider app (stop the other one first with Ctrl+C)
+npm run start:admin         # admin dashboard — opens in your browser
 ```
+Phone and computer must be on the same Wi-Fi (or add `--tunnel`). Expo Go runs one app at a time.
+To test a whole order yourself: run the **customer app on your phone**, the **rider app on another phone** (or the same phone, switching),
+and the **admin dashboard in a browser** to approve the rider.
 
-**The QR code appears in your terminal** after `npx expo start` — it is generated each time you run it, so it is not on this page.
+## 3. Build installable apps and publish the dashboard
 
-1. Install **Expo Go** on your phone (App Store / Play Store).
-2. Scan the QR code: on **iPhone** use the normal Camera app; on **Android** use the "Scan QR code" button inside Expo Go.
-3. Your phone and computer must be on the **same Wi-Fi**. If it won't connect, stop the server (Ctrl+C) and run `npx expo start --tunnel` instead.
-
-Maps work in Expo Go.
-
-**Rider app:** stop the server (Ctrl+C) and run `npm run start:rider` instead, then scan the new QR code.
-Only one app runs at a time in Expo Go; switch by restarting with the other command.
-
-## 2. Build installable apps
-
-You need a free Expo account: https://expo.dev/signup
+You need a free Expo account (`npx eas-cli@latest login`), and the project linked once (`npx eas-cli@latest init`).
 
 ```bash
-npm install -g eas-cli
-eas login
-eas init            # links the project to your Expo account
+npx eas-cli@latest build -p android --profile preview            # customer app, Android test APK
+npx eas-cli@latest build -p android --profile rider-preview      # rider app, Android test APK
+npx eas-cli@latest build -p ios --profile production             # customer app for the App Store
+npx eas-cli@latest build -p ios --profile rider-production       # rider app for the App Store
+npm run deploy:admin                                             # admin dashboard website (EAS Hosting)
 ```
+The `.env` values are built into the apps, so build after creating `.env`.
+Stores: Google Play Console (US$25 once) and Apple Developer Program (US$99/year); customer and rider apps are separate listings
+(`com.ajaridego.ridego` and `com.ajaridego.ridego.rider` — these IDs can't change after the first upload).
 
-**Android test APK** (install directly on any Android phone, no Play Store needed):
-```bash
-eas build -p android --profile preview
-```
-EAS gives you a download link / QR code for the `.apk`.
-
-**Store builds:**
-```bash
-eas build -p android --profile production   # .aab for Google Play
-eas build -p ios --profile production       # .ipa for the App Store (needs Apple Developer account)
-```
-
-**Rider app** — same commands with the rider profiles:
-```bash
-eas build -p android --profile rider-preview      # Android test APK of RideGo Rider
-eas build -p android --profile rider-production   # Google Play
-eas build -p ios --profile rider-production       # App Store
-```
-Each app is a separate listing in the stores (different app IDs).
-
-## 3. Publish to the stores
-
-| | Google Play | Apple App Store |
-|---|---|---|
-| Account | Google Play Console — US$25 one-time | Apple Developer Program — US$99/year |
-| Upload | `eas submit -p android` | `eas submit -p ios` |
-| Review | usually hours–few days | usually 1–3 days |
-
-Both stores need: app icon, screenshots, description, **privacy policy URL**, and (for this app) a reason for location access.
-New personal Play Console accounts must run a closed test with testers for 14 days before production.
-
-## Before you publish — change these
-
-1. App IDs are `com.ajaridego.ridego` (customer, in `app.json`) and `com.ajaridego.ridego.rider` (rider, in `app.config.ts`). Keep them — they cannot be changed after the first store upload.
-2. `app.json` → replace `REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_KEY` with a Google Maps SDK for Android key
-   (Google Cloud Console → enable "Maps SDK for Android"). **Without it the map is blank on Android store builds.** iOS uses Apple Maps, no key needed.
-3. App name/icon: `app.json` → `name`, and replace the images in `assets/`.
-
-## Going live (what a real launch still needs)
-
-- **Backend + database** (e.g. Supabase or Firebase) to **connect the two apps**: customer and rider accounts/OTP login,
-  orders sent to nearby online riders, real-time rider location for tracking, earnings and cash remittance records.
-- **Payments**: GCash/Maya/cards via a gateway such as PayMongo or Xendit.
-- **Receipt photos**: let riders upload a photo of the store receipt so customers can verify the item cost.
-- **Rider verification** (license, OR/CR, NBI clearance) and **push notifications**.
-- **Places search**: replace the preset list in `src/lib/data.ts` with Google Places.
-- **Routing server**: distances, fees and route lines come from the free public OSRM demo server
-  (`ROUTING_URL` in `src/lib/routing.ts`, OpenStreetMap road data). It is meant for testing and has no traffic data.
-  Before launch, run your own OSRM server or switch to a paid routing API (e.g. Google Routes).
-  If the server can't be reached, the app falls back to an estimate and says so on screen.
-- **Legal**: carrying people on motorcycles for a fee (pasugo "Person") is regulated in the Philippines (LTFRB/DOTr motorcycle-taxi rules), and courier services may need permits — check before taking real passengers or parcels.
+Before store builds, replace `REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_KEY` in `app.json` with a Google Maps SDK for Android key,
+or maps are blank on Android. iOS uses Apple Maps (no key).
 
 ## Project layout
 
 ```
-src/app/            customer app screens (Expo Router — each file is a screen)
-  (tabs)/           Home, Pabili, Pasugo, Activity, Account
-  order             what to buy (shopping list) + delivery fee
-  track/[id]        live tracking
-  place-search      location picker
+src/app/            customer app screens
 src/rider-app/      rider app screens
-  (tabs)/           Jobs, Earnings, Profile
-src/lib/            shared: data, pricing, routing, trip simulation, rider jobs, app state
-src/components/     shared: map, cards, buttons
-app.config.ts       picks the customer or rider app (APP_VARIANT=rider)
+src/admin-app/      admin dashboard screens
+src/lib/            shared: api.ts (database), adminApi.ts, pricing, routing, auth, local drafts
+src/components/     shared UI (admin/ and rider/ have app-specific parts)
+supabase/           schema.sql (tables, security rules, server functions), seed.sql, tests/
+app.config.ts       picks the customer, rider or admin app
 ```
-Prices: `src/lib/pricing.ts` — `deliveryFee` for pabili (₱49 for the first 2 km, then ₱10 per km) and `VEHICLES` / `pasugoFee` for pasugo. Suggested stores, store types and item suggestions: `src/lib/data.ts`.
+
+### Database tests
+`supabase/tests/rules_test.sql` checks the security rules and money logic as customers, riders and an admin
+(e.g. riders can't approve themselves, customers can't change fees, only one rider gets a job, 80% share, promos, balances).
+Run against any Postgres 15+: `npm run test:db -- "-h localhost -U postgres"`.
+
+## Still to do before a public launch
+- **Online payments** (GCash/Maya/cards) via a provider such as PayMongo — needs a business account.
+- **Phone-number (SMS) login** instead of email — needs an SMS provider in Supabase (e.g. Twilio).
+- **Push notifications** for new jobs and order updates; **background location** for riders (today the rider app must stay open).
+- **Receipt and prescription photos**; **rider document uploads** (license, OR/CR) for approval.
+- **Routing**: distances use the free OSRM demo server (`src/lib/routing.ts`); use your own server or a paid API in production.
+- **Legal**: motorcycle passenger transport (pasugo "Person") and courier services are regulated in the Philippines (LTFRB/DOTr) — get permits first.

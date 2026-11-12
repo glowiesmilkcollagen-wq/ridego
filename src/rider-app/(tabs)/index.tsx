@@ -1,131 +1,140 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapPreview from '@/components/MapPreview';
+import { useRider } from '@/components/rider/RiderContext';
+import { useLocationSharing } from '@/components/rider/useLocationSharing';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
-import { DriverJob, generateJobs, jobsSince, STAGE_STATUS, STAGES, summarize, withRoadRoute } from '@/lib/driver';
-import { RIDER_SHARE_TEXT } from '@/lib/pricing';
-import { useStore } from '@/lib/store';
+import {
+  acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, useCustomerProfile, useOpenJobs, useRiderOrders,
+} from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { deliveredSince, nextStepLabel, RIDER_TODO, summarize } from '@/lib/driver';
+import { percent } from '@/lib/pricing';
+import { errorText } from '@/lib/supabase';
 import { CARGO, PAYMENT_LABELS } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Jobs() {
-  const { state, setOnline, acceptJob, advanceJob, declineActive } = useStore();
-  const { driver } = state;
-  const [jobs, setJobs] = useState<DriverJob[]>([]);
+  const { userId, profile } = useAuth();
+  const { rider, setRider } = useRider();
+  const orders = useRiderOrders(userId);
+  const active = (orders.data ?? []).find((o) => ACTIVE_STATUSES.includes(o.status));
+  const online = !!rider?.online;
+  const open = useOpenJobs(online && !active);
+  const locationProblem = useLocationSharing(online);
+  const today = summarize(deliveredSince(orders.data ?? [], 'today'));
+  const [busy, setBusy] = useState<string | null>(null);
 
-  // While online and idle, refresh incoming requests every 15 seconds.
-  useEffect(() => {
-    if (!driver.online || driver.active) return;
-    let live = true;
-    const refresh = () => {
-      const fresh = generateJobs(3);
-      setJobs(fresh);
-      // Swap in road distances and pay as they arrive.
-      Promise.all(fresh.map(withRoadRoute)).then((routed) => live && setJobs((cur) => (cur === fresh ? routed : cur)));
-    };
-    refresh();
-    const t = setInterval(refresh, 15000);
-    return () => {
-      live = false;
-      clearInterval(t);
-    };
-  }, [driver.online, driver.active]);
-
-  const today = summarize(jobsSince(driver.history, 'today'));
+  const run = async (key: string, fn: () => Promise<unknown>) => {
+    setBusy(key);
+    try {
+      await fn();
+    } catch (e) {
+      Alert.alert('Not done', errorText(e));
+    } finally {
+      setBusy(null);
+      orders.refresh();
+      open.refresh();
+    }
+  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
-      <Text style={styles.h1}>Hi {driver.profile.name.split(' ')[0]}</Text>
-      <Card style={[styles.status, driver.online && { backgroundColor: colors.rideSoft, borderColor: colors.ride }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{driver.online ? 'You are online' : 'You are offline'}</Text>
-          <Text style={{ color: colors.muted, marginTop: 2 }}>{driver.online ? 'Receiving pabili and pasugo requests' : 'Go online to start earning'}</Text>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
+        <Text style={styles.h1}>Hi {(profile?.full_name || 'Rider').split(' ')[0]}</Text>
+        <Card style={[styles.status, online && { backgroundColor: colors.rideSoft, borderColor: colors.ride }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{online ? 'You are online' : 'You are offline'}</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>{online ? 'Receiving pabili and pasugo requests' : 'Go online to start earning'}</Text>
+          </View>
+          <Switch
+            value={online}
+            disabled={busy === 'online'}
+            onValueChange={(v) => run('online', async () => setRider(await setOnline(v)))}
+            trackColor={{ true: colors.ride }}
+          />
+        </Card>
+        {online && locationProblem ? <Text style={{ color: colors.warning }}>{locationProblem}</Text> : null}
+
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Stat label="Earned today" value={peso(today.earned)} />
+          <Stat label="Jobs today" value={String(today.jobs)} />
+          <Stat label="Cash to remit" value={peso(today.toRemit)} />
         </View>
-        <Switch
-          value={driver.online}
-          onValueChange={(v) => {
-            if (!v && driver.active) return Alert.alert('Finish your current job first');
-            setOnline(v);
-          }}
-          trackColor={{ true: colors.ride }}
-        />
-      </Card>
 
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Stat label="Earned today" value={peso(today.earned)} />
-        <Stat label="Jobs today" value={String(today.jobs)} />
-        <Stat label="Cash to remit" value={peso(today.toRemit)} />
-      </View>
-
-      {driver.active ? (
-        <ActiveJob key={driver.active.id} job={driver.active} onNext={advanceJob} onNavigate={() => openNavigation(driver.active!)} onCancel={() =>
-          Alert.alert('Drop this job?', 'Frequent cancellations lower your acceptance rate.', [
-            { text: 'Keep job', style: 'cancel' },
-            { text: 'Drop', style: 'destructive', onPress: declineActive },
-          ])}
-        />
-      ) : driver.online ? (
-        <View>
-          <SectionTitle>Incoming requests</SectionTitle>
-          {jobs.map((j) => (
-            <Card key={j.id} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <MaterialCommunityIcons name={(j.kind === 'pabili' ? 'basket-outline' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={22} color={j.kind === 'pabili' ? colors.primary : colors.ride} />
-                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {j.km.toFixed(1)} km</Text>
-                <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(j.payout)}</Text>
-              </View>
-              <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {j.pickup.name}</Text>
-              <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {j.dropoff.name}</Text>
-              {j.items ? <Text style={styles.line}>🛒 {j.items.join(', ')}</Text> : null}
-              <Text style={[styles.line, { color: colors.muted }]}>{j.customer} · {j.detail}{j.kind === 'pabili' ? ' · you pay at the store' : ''}</Text>
-              <Text style={[styles.line, { color: colors.muted }]}>Customer fee {peso(j.fee)} ({PAYMENT_LABELS[j.payment]}) · your {RIDER_SHARE_TEXT} share {peso(j.payout)}</Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                <Button title="Skip" variant="outline" color={colors.muted} style={{ flex: 1 }} onPress={() => setJobs((js) => js.filter((x) => x.id !== j.id))} />
-                <Button title="Accept" color={colors.ride} style={{ flex: 2 }} onPress={() => acceptJob(j)} />
-              </View>
-            </Card>
-          ))}
-          {jobs.length === 0 && <Text style={{ color: colors.muted, textAlign: 'center' }}>Looking for requests near you…</Text>}
-        </View>
-      ) : (
-        <Empty icon="sleep" title="Offline" subtitle="Switch on to see pabili and pasugo requests near you." />
-      )}
-
-    </ScrollView>
+        {active ? (
+          <ActiveJob key={active.id} o={active} busy={busy} run={run} />
+        ) : online ? (
+          <View>
+            <SectionTitle>Incoming requests</SectionTitle>
+            {(open.data ?? []).map((o) => (
+              <Card key={o.id} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <MaterialCommunityIcons name={(o.kind === 'pabili' ? 'basket-outline' : CARGO[o.cargo ?? 'parcel'].icon) as any} size={22} color={o.kind === 'pabili' ? colors.primary : colors.ride} />
+                  <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{o.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {Number(o.km).toFixed(1)} km</Text>
+                  <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(Number(o.rider_earning))}</Text>
+                </View>
+                <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {o.pickup_name}</Text>
+                <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {o.dropoff_name}</Text>
+                {o.items ? <Text style={styles.line}>🛒 {o.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</Text> : null}
+                {o.description ? <Text style={styles.line}>{CARGO[o.cargo ?? 'parcel'].emoji} {o.description}</Text> : null}
+                <Text style={[styles.line, { color: colors.muted }]}>
+                  {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}{o.vehicle === 'car' ? ' · car' : ''}
+                </Text>
+                <Text style={[styles.line, { color: colors.muted }]}>
+                  Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · your {percent(Number(o.rider_share))} share {peso(Number(o.rider_earning))}
+                </Text>
+                <Button title="Accept" color={colors.ride} style={{ marginTop: 10 }} loading={busy === o.id} onPress={() => run(o.id, () => acceptOrder(o.id))} />
+              </Card>
+            ))}
+            {open.loaded && !(open.data ?? []).length && <Text style={{ color: colors.muted, textAlign: 'center' }}>No requests right now. New ones appear here automatically.</Text>}
+          </View>
+        ) : (
+          <Empty icon="sleep" title="Offline" subtitle="Switch on to see pabili and pasugo requests near you." />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 /** Lets the rider pick a navigation app; each falls back to Google Maps in the browser. */
-function openNavigation(job: DriverJob) {
-  const target = job.stage === 0 ? job.pickup.location : job.dropoff.location;
-  const ll = `${target.latitude},${target.longitude}`;
+function openNavigation(o: Order) {
+  const toPickup = o.status === 'accepted';
+  const [lat, lng, name] = toPickup ? [o.pickup_lat, o.pickup_lng, o.pickup_name] : [o.dropoff_lat, o.dropoff_lng, o.dropoff_name];
+  const ll = `${lat},${lng}`;
   const web = `https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`;
-  const open = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(web));
-  const apps = [
-    { text: 'Google Maps', onPress: () => open(Platform.OS === 'ios' ? `comgooglemaps://?daddr=${ll}&directionsmode=driving` : `google.navigation:q=${ll}`) },
-    { text: 'Waze', onPress: () => open(`https://waze.com/ul?ll=${ll}&navigate=yes`) },
-    ...(Platform.OS === 'ios' ? [{ text: 'Apple Maps', onPress: () => open(`http://maps.apple.com/?daddr=${ll}&dirflg=d`) }] : []),
+  const go = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(web));
+  Alert.alert(`Navigate to ${toPickup ? 'pickup' : 'drop-off'}`, name, [
+    { text: 'Google Maps', onPress: () => go(Platform.OS === 'ios' ? `comgooglemaps://?daddr=${ll}&directionsmode=driving` : `google.navigation:q=${ll}`) },
+    { text: 'Waze', onPress: () => go(`https://waze.com/ul?ll=${ll}&navigate=yes`) },
+    ...(Platform.OS === 'ios' ? [{ text: 'Apple Maps', onPress: () => go(`http://maps.apple.com/?daddr=${ll}&dirflg=d`) }] : []),
     { text: 'Cancel', style: 'cancel' as const },
-  ];
-  Alert.alert(`Navigate to ${job.stage === 0 ? 'pickup' : 'drop-off'}`, job.stage === 0 ? job.pickup.name : job.dropoff.name, apps);
+  ]);
 }
 
-function ActiveJob({ job, onNext, onNavigate, onCancel }: {
-  job: DriverJob; onNext: (receipt?: number) => void; onNavigate: () => void; onCancel: () => void;
-}) {
-  const [receipt, setReceipt] = useState('');
-  const toPickup = job.stage === 0;
-  const buying = job.kind === 'pabili' && job.stage === 1;
-  const receiptValue = Number(receipt.replace(/[^0-9.]/g, ''));
+const call = (phone?: string | null) => {
+  const p = phone?.replace(/[^0-9+]/g, '');
+  if (p) Linking.openURL(`tel:${p}`);
+};
 
-  const next = () => {
-    if (!buying) return onNext();
-    if (!receiptValue) return Alert.alert('Enter the receipt total', 'Type how much you paid at the store, as shown on the receipt.');
-    onNext(receiptValue);
+function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key: string, fn: () => Promise<unknown>) => void }) {
+  const customer = useCustomerProfile(o.customer_id);
+  const [receipt, setReceipt] = useState('');
+  const pabili = o.kind === 'pabili';
+  const buying = pabili && o.status === 'at_pickup';
+  const next = nextStepLabel(o);
+  const receiptValue = Number(receipt.replace(/[^0-9.]/g, ''));
+  const contacts = [
+    { label: `Customer · ${customer.data?.full_name || o.customer_name}`, phone: customer.data?.phone },
+    ...(o.sender?.phone ? [{ label: `${o.cargo === 'person' ? 'Passenger' : 'At pickup'} · ${o.sender.name || o.sender.phone}`, phone: o.sender.phone }] : []),
+    ...(o.receiver?.phone ? [{ label: `Receiver · ${o.receiver.name || o.receiver.phone}`, phone: o.receiver.phone }] : []),
+  ].filter((c) => c.phone);
+
+  const advance = () => {
+    if (buying && !receiptValue) return Alert.alert('Enter the receipt total', 'Type how much you paid at the store, as shown on the receipt.');
+    run('advance', () => advanceOrder(o.id, buying ? receiptValue : undefined));
   };
 
   return (
@@ -133,22 +142,36 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
       <MapPreview
         height={200}
         pins={[
-          { id: 'p', coord: job.pickup.location, kind: job.kind === 'pabili' ? 'store' : 'pickup' },
-          { id: 'd', coord: job.dropoff.location, kind: 'dropoff' },
+          { id: 'p', coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: pabili ? 'store' : 'pickup' },
+          { id: 'd', coord: { latitude: o.dropoff_lat, longitude: o.dropoff_lng }, kind: 'dropoff' },
         ]}
-        path={job.path ?? [job.pickup.location, job.dropoff.location]}
+        path={o.path?.length ? o.path : [{ latitude: o.pickup_lat, longitude: o.pickup_lng }, { latitude: o.dropoff_lat, longitude: o.dropoff_lng }]}
       />
       <View style={{ padding: 16 }}>
-        <Text style={{ color: colors.ride, fontWeight: '800' }}>{STAGE_STATUS[job.kind][job.stage]}</Text>
-        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{job.stage < 2 ? job.pickup.name : job.dropoff.name}</Text>
-        <Text style={{ color: colors.muted, marginTop: 4 }}>{job.customer} · {job.detail} · earn {peso(job.payout)}</Text>
+        <Text style={{ color: colors.ride, fontWeight: '800' }}>{RIDER_TODO[o.status]?.[o.kind]}</Text>
+        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{o.status === 'picked_up' ? o.dropoff_name : o.pickup_name}</Text>
+        <Text style={{ color: colors.muted, marginTop: 4 }}>
+          Job {o.code} · {Number(o.km).toFixed(1)} km · you earn {peso(Number(o.rider_earning))}
+        </Text>
 
-        {job.items && job.stage < 2 && (
+        {(pabili ? !!o.items?.length : !!o.description) && o.status !== 'picked_up' && (
           <View style={styles.list}>
-            <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>Shopping list</Text>
-            {job.items.map((i) => <Text key={i} style={{ color: colors.text, paddingVertical: 2 }}>•  {i}</Text>)}
+            <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>{pabili ? 'Shopping list' : CARGO[o.cargo ?? 'parcel'].label}</Text>
+            {pabili
+              ? o.items!.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 2 }}>•  {i.qty}× {i.name}</Text>)
+              : <Text style={{ color: colors.text }}>{o.description}</Text>}
+            {o.budget ? <Text style={{ color: colors.muted, marginTop: 4 }}>Spend at most {peso(Number(o.budget))}</Text> : null}
+            {o.note ? <Text style={{ color: colors.muted, marginTop: 4 }}>Note: {o.note}</Text> : null}
           </View>
         )}
+
+        {contacts.map((c) => (
+          <Pressable key={c.label} onPress={() => call(c.phone)} style={styles.contact}>
+            <MaterialCommunityIcons name="phone-outline" size={18} color={colors.ride} />
+            <Text style={{ marginLeft: 8, color: colors.text, flex: 1 }} numberOfLines={1}>{c.label}</Text>
+            <Text style={{ color: colors.ride, fontWeight: '700' }}>Call</Text>
+          </Pressable>
+        ))}
 
         {buying && (
           <View style={{ marginTop: 12 }}>
@@ -163,31 +186,42 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
           </View>
         )}
 
-        {job.stage === 2 && <Collect job={job} />}
+        {o.status === 'picked_up' && <Collect o={o} />}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-          <Button title="Navigate" icon="navigation-variant" variant="outline" color={colors.text} style={{ flex: 1 }} onPress={onNavigate} />
-          <Button title={STAGES[job.kind][job.stage]} color={colors.ride} style={{ flex: 1.4 }} onPress={next} />
+          <Button title="Navigate" icon="navigation-variant" variant="outline" color={colors.text} style={{ flex: 1 }} onPress={() => openNavigation(o)} />
+          {next && <Button title={next} color={colors.ride} style={{ flex: 1.4 }} onPress={advance} loading={busy === 'advance'} />}
         </View>
-        {toPickup && <Button title="Drop job" variant="ghost" color={colors.danger} onPress={onCancel} style={{ marginTop: 6 }} />}
+        {o.status === 'accepted' && (
+          <Button
+            title="Drop job" variant="ghost" color={colors.danger} style={{ marginTop: 6 }}
+            onPress={() => Alert.alert('Drop this job?', 'It goes back to other riders. Frequent drops lower your acceptance rate.', [
+              { text: 'Keep job', style: 'cancel' },
+              { text: 'Drop', style: 'destructive', onPress: () => run('drop', () => releaseOrder(o.id)) },
+            ])}
+          />
+        )}
       </View>
     </Card>
   );
 }
 
 /** What the rider collects at drop-off: the receipt for pabili items, plus the fee only if paid in cash. */
-function Collect({ job }: { job: DriverJob }) {
-  const items = job.kind === 'pabili' ? job.receipt ?? 0 : 0;
-  const fee = job.payment === 'cash' ? job.fee : 0;
+function Collect({ o }: { o: Order }) {
+  const items = o.kind === 'pabili' ? Number(o.receipt_amount ?? 0) : 0;
+  const fee = o.payment === 'cash' ? Number(o.fee) : 0;
+  const earned = Number(o.rider_earning);
   const parts = [items ? `${peso(items)} items (receipt)` : '', fee ? `${peso(fee)} fee (cash)` : ''].filter(Boolean);
   return (
     <View style={styles.collect}>
       <Text style={{ color: colors.text }}>Collect from customer</Text>
       <Text style={{ fontWeight: '800', fontSize: 22, color: colors.text, marginTop: 2 }}>{peso(items + fee)}</Text>
-      <Text style={{ color: colors.muted, marginTop: 2 }}>
-        {parts.length ? parts.join(' + ') : `Nothing to collect — fee paid by ${PAYMENT_LABELS[job.payment]}`}
-      </Text>
-      {fee > 0 && <Text style={{ color: colors.muted, marginTop: 2 }}>Keep {peso(job.payout)} ({RIDER_SHARE_TEXT}), remit {peso(job.fee - job.payout)} to RideGo</Text>}
+      <Text style={{ color: colors.muted, marginTop: 2 }}>{parts.length ? parts.join(' + ') : `Nothing to collect — fee paid by ${PAYMENT_LABELS[o.payment]}`}</Text>
+      {fee > 0 && (
+        <Text style={{ color: colors.muted, marginTop: 2 }}>
+          {fee > earned ? `Keep ${peso(earned)}, remit ${peso(fee - earned)} to RideGo` : fee === earned ? 'Keep it all — nothing to remit' : `Keep it all; RideGo owes you ${peso(earned - fee)} (promo)`}
+        </Text>
+      )}
     </View>
   );
 }
@@ -207,7 +241,7 @@ const styles = StyleSheet.create({
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },
   line: { marginTop: 3, color: colors.text },
   list: { backgroundColor: colors.bg, borderRadius: radius.md, padding: 12, marginTop: 12 },
+  contact: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   receipt: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12 },
   collect: { backgroundColor: colors.rideSoft, borderRadius: radius.md, padding: 12, marginTop: 12 },
-  hist: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
 });

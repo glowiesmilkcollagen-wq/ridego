@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { STORES } from './data';
+import type { Store } from './data';
 import { LatLng, roadKm } from './geo';
 
 /**
@@ -66,17 +66,17 @@ export function getRoute(a: LatLng, b: LatLng): Promise<Route> {
   return p;
 }
 
-/** Road distance in km from every suggested store to `dest`, in one request. Missing entries fall back to estimates. */
-export function getStoreDistances(dest: LatLng): Promise<Record<string, number>> {
-  const key = pt(dest);
+/** Road distance in km from every store to `dest`, in one request. Missing entries fall back to estimates. */
+export function getStoreDistances(stores: Store[], dest: LatLng): Promise<Record<string, number>> {
+  const key = `${pt(dest)}|${stores.map((s) => s.id).join(',')}`;
   let p = tableCache.get(key);
   if (!p) {
-    const coords = [...STORES.map((s) => pt(s.location)), key].join(';');
-    const sources = STORES.map((_, i) => i).join(';');
-    p = fetchJson(`${ROUTING_URL}/table/v1/driving/${coords}?sources=${sources}&destinations=${STORES.length}&annotations=distance`)
+    const coords = [...stores.map((s) => pt(s.location)), pt(dest)].join(';');
+    const sources = stores.map((_, i) => i).join(';');
+    p = fetchJson(`${ROUTING_URL}/table/v1/driving/${coords}?sources=${sources}&destinations=${stores.length}&annotations=distance`)
       .then((json) => {
         const out: Record<string, number> = {};
-        STORES.forEach((s, i) => {
+        stores.forEach((s, i) => {
           const m = json.distances?.[i]?.[0];
           if (typeof m === 'number') out[s.id] = m / 1000;
         });
@@ -108,17 +108,18 @@ export function useRoute(a?: LatLng | null, b?: LatLng | null) {
   return { route, loading: !!key && !route };
 }
 
-/** Road distance in km from each suggested store to `dest`; uses an estimate for any store not yet known. */
-export function useStoreDistances(dest: LatLng) {
+/** Road distance in km from each store to `dest`; uses an estimate for any store not yet known. */
+export function useStoreDistances(stores: Store[], dest: LatLng) {
   const [kms, setKms] = useState<Record<string, number>>({});
-  const key = pt(dest);
+  const key = `${pt(dest)}|${stores.map((s) => s.id).join(',')}`;
   useEffect(() => {
+    if (!stores.length) return;
     let live = true;
-    getStoreDistances(dest).then((r) => live && setKms(r));
+    getStoreDistances(stores, dest).then((r) => live && setKms(r));
     return () => {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  return (storeId: string) => kms[storeId] ?? roadKm(STORES.find((s) => s.id === storeId)!.location, dest);
+  return (store: Store) => kms[store.id] ?? roadKm(store.location, dest);
 }

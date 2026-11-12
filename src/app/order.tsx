@@ -1,18 +1,25 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import PaymentPicker from '@/components/PaymentPicker';
+import PaymentPicker, { paymentFor } from '@/components/PaymentPicker';
+import PromoField, { AppliedPromo } from '@/components/PromoField';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
-import { CATEGORIES, DEFAULT_ITEM_EXAMPLE, STORES } from '@/lib/data';
-import { etaMinutes } from '@/lib/pricing';
+import { placeOrder, usePrices, useStores } from '@/lib/api';
+import { CATEGORIES, DEFAULT_ITEM_EXAMPLE } from '@/lib/data';
+import { deliveryFee, etaMinutes } from '@/lib/pricing';
 import { useRoute } from '@/lib/routing';
-import { errandFee, useStore } from '@/lib/store';
+import { useStore } from '@/lib/store';
+import { errorText } from '@/lib/supabase';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Order() {
-  const { state, addErrandItem, changeErrandQty, placeErrand } = useStore();
+  const { state, addErrandItem, changeErrandQty, clearErrand } = useStore();
+  const { stores } = useStores();
+  const prices = usePrices();
+  const [promo, setPromo] = useState<AppliedPromo>(null);
+  const [placing, setPlacing] = useState(false);
   const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState('');
   const [note, setNote] = useState('');
@@ -28,10 +35,11 @@ export default function Order() {
     );
   }
 
-  const known = storeId ? STORES.find((r) => r.id === storeId) : undefined;
+  const known = storeId ? stores.find((r) => r.id === storeId) : undefined;
   const suggestions = (known?.favorites ?? []).filter((f) => !items.some((i) => i.name.toLowerCase() === f.toLowerCase()));
   const km = route?.km ?? 0;
-  const fee = route ? errandFee(route) : 0;
+  const baseFee = route ? deliveryFee(km, prices) : 0;
+  const fee = Math.max(0, baseFee - (promo?.discount ?? 0));
   const eta = (known?.waitMinutes ?? 15) + etaMinutes(km) + 5;
   const example = CATEGORIES.find((c) => c.key === known?.category)?.example ?? DEFAULT_ITEM_EXAMPLE;
   const pharmacy = known?.category === 'Medicine' || /pharma|drug|botika|parmasya/i.test(store.name);
@@ -41,10 +49,21 @@ export default function Order() {
     addErrandItem(draft);
     setDraft('');
   };
-  const place = () => {
-    if (!route) return;
-    const id = placeErrand(route, note.trim(), budgetValue);
-    if (id) router.replace(`/track/${id}`);
+  const place = async () => {
+    if (!route || placing) return;
+    setPlacing(true);
+    try {
+      const o = await placeOrder({
+        kind: 'pabili', pickup: store, dropoff: state.home, km: route.km, path: route.estimated ? null : route.path,
+        payment: paymentFor(state.payment), promo_code: promo?.code, items, note: note.trim() || undefined, budget: budgetValue, store_id: storeId,
+      });
+      clearErrand();
+      router.replace(`/track/${o.id}`);
+    } catch (e) {
+      Alert.alert('Could not place the order', errorText(e));
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
@@ -147,10 +166,15 @@ export default function Order() {
 
         <Card>
           {route ? (
-            <Row label={`Delivery fee (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(fee)} bold />
+            <>
+              <Row label={`Delivery fee (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(baseFee)} />
+              {promo ? <Row label={`Promo ${promo.code}`} value={`−${peso(promo.discount)}`} valueColor={colors.ride} /> : null}
+              <Row label="You pay for delivery" value={peso(fee)} bold />
+            </>
           ) : (
             <Row label="Delivery fee" value="Calculating route…" bold />
           )}
+          {route && <View style={{ marginVertical: 8 }}><PromoField kind="pabili" baseFee={baseFee} value={promo} onChange={setPromo} /></View>}
           {route?.estimated && <Text style={styles.warn}>Couldn't reach the map service, so this distance is estimated.</Text>}
           <Row label="Items" value="Pay rider as per receipt" />
           {budgetValue ? <Row label="Item spending limit" value={peso(budgetValue)} /> : null}
@@ -165,7 +189,7 @@ export default function Order() {
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
         <Button
           title={!items.length ? 'Add at least one item' : loading ? 'Calculating route…' : `Find a rider · ${peso(fee)} delivery`}
-          onPress={place} disabled={!items.length || !route}
+          onPress={place} loading={placing} disabled={!items.length || !route}
         />
       </View>
     </KeyboardAvoidingView>

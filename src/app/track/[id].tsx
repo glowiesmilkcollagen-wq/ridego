@@ -1,89 +1,101 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
+import { cancelOrder, isOpen, Order, rateOrder, useOrder } from '@/lib/api';
 import { VEHICLES } from '@/lib/pricing';
-import { canCancel, CARGO, getProgress, PAYMENT_LABELS, PHASES } from '@/lib/trips';
-import { useNow, useStore } from '@/lib/store';
-import { colors, peso, radius } from '@/lib/theme';
+import { errorText } from '@/lib/supabase';
+import { canCustomerCancel, CARGO, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
+import { colors, peso } from '@/lib/theme';
 
 export default function Track() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, cancelTrip, rateTrip } = useStore();
-  const now = useNow(1000);
-  const trip = state.trips.find((t) => t.id === id);
-  if (!trip) return <Empty icon="map-search-outline" title="Trip not found" />;
+  const { order: o, loading, rider, riderProfile, refresh } = useOrder(id);
+  const [busy, setBusy] = useState(false);
 
-  const pabili = trip.kind === 'pabili';
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>;
+  if (!o) return <Empty icon="map-search-outline" title="Order not found" />;
+
+  const pabili = o.kind === 'pabili';
   const accent = pabili ? colors.primary : colors.ride;
-  const p = getProgress(trip, now);
-  const phases = PHASES[trip.kind];
-  const live = !p.done && !p.cancelled;
-  const showRider = p.phase.key !== 'searching';
-
+  const text = statusText(o);
+  const live = isOpen(o);
+  const step = STEPS.indexOf(o.status);
+  const riderPos = live && o.status !== 'searching' && rider?.lat != null && rider?.lng != null ? { latitude: rider.lat, longitude: rider.lng } : null;
+  const pickup = { latitude: o.pickup_lat, longitude: o.pickup_lng };
+  const dropoff = { latitude: o.dropoff_lat, longitude: o.dropoff_lng };
   const pins: MapPin[] = [
-    { id: 'p', coord: trip.pickup.location, kind: pabili ? 'store' : 'pickup' },
-    { id: 'd', coord: trip.dropoff.location, kind: 'dropoff' },
-    ...(live && p.riderPos ? [{ id: 'r', coord: p.riderPos, kind: 'rider' as const }] : []),
+    { id: 'p', coord: pickup, kind: pabili ? 'store' : 'pickup' },
+    { id: 'd', coord: dropoff, kind: 'dropoff' },
+    ...(riderPos ? [{ id: 'r', coord: riderPos, kind: 'rider' as const }] : []),
   ];
 
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+      refresh();
+    } catch (e) {
+      Alert.alert('Something went wrong', errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const onCancel = () =>
     Alert.alert(pabili ? 'Cancel order?' : 'Cancel pasugo?', 'This cannot be undone.', [
       { text: 'Keep it', style: 'cancel' },
-      { text: 'Cancel', style: 'destructive', onPress: () => cancelTrip(trip.id) },
+      { text: 'Cancel', style: 'destructive', onPress: () => act(() => cancelOrder(o.id)) },
     ]);
-
-  const mins = Math.max(1, Math.ceil(p.secondsLeft / 60));
+  const phone = riderProfile?.phone?.replace(/[^0-9+]/g, '');
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: pabili ? `Order ${trip.id}` : `Pasugo ${trip.id}` }} />
+      <Stack.Screen options={{ title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}` }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <MapPreview pins={pins} path={trip.path ?? [trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.vehicle === 'car' ? 'car' : 'motorbike'} />
+        <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon={o.vehicle === 'car' ? 'car' : 'motorbike'} />
 
         <View style={{ padding: 16, gap: 14 }}>
           <Card>
-            <Text style={[styles.status, { color: p.cancelled ? colors.danger : accent }]}>
-              {p.cancelled ? 'Cancelled' : p.phase.label}
-            </Text>
-            <Text style={{ color: colors.muted, marginTop: 4 }}>
-              {p.cancelled ? 'No charge was made.' : live ? `${p.phase.detail} · ~${mins} min left (demo speed)` : p.phase.detail}
-            </Text>
-            <View style={styles.bar}>
-              {phases.map((ph, i) => (
-                <View key={ph.key} style={[styles.seg, { backgroundColor: !p.cancelled && i <= p.index ? accent : colors.border }]} />
-              ))}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {o.status === 'searching' && <ActivityIndicator color={accent} />}
+              <Text style={[styles.status, { color: o.status === 'cancelled' ? colors.danger : accent }]}>{text.label}</Text>
             </View>
+            <Text style={{ color: colors.muted, marginTop: 4 }}>{text.detail}</Text>
+            {o.status !== 'cancelled' && (
+              <View style={styles.bar}>
+                {STEPS.map((s, i) => <View key={s} style={[styles.seg, { backgroundColor: i <= step ? accent : colors.border }]} />)}
+              </View>
+            )}
           </Card>
 
-          {showRider && !p.cancelled && (
+          {o.rider_id && o.status !== 'cancelled' && (
             <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.avatar, { backgroundColor: pabili ? colors.primarySoft : colors.rideSoft }]}>
-                <MaterialCommunityIcons name={trip.vehicle === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
+                <MaterialCommunityIcons name={o.vehicle === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{trip.rider.name}</Text>
-                <Text style={{ color: colors.muted }}>{trip.rider.plate} · ★ {trip.rider.rating}</Text>
+                <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{riderProfile?.full_name || 'Your rider'}</Text>
+                <Text style={{ color: colors.muted }}>{[rider ? VEHICLES[rider.vehicle].label : null, rider?.plate].filter(Boolean).join(' · ') || 'Rider details'}</Text>
               </View>
-              {live && (
+              {live && phone ? (
                 <>
-                  <IconBtn icon="message-text-outline" onPress={() => Linking.openURL('sms:')} />
-                  <IconBtn icon="phone-outline" onPress={() => Linking.openURL('tel:')} />
+                  <IconBtn icon="message-text-outline" onPress={() => Linking.openURL(`sms:${phone}`)} />
+                  <IconBtn icon="phone-outline" onPress={() => Linking.openURL(`tel:${phone}`)} />
                 </>
-              )}
+              ) : null}
             </Card>
           )}
 
-          {p.done && (
+          {o.status === 'delivered' && (
             <Card>
-              <SectionTitle>{trip.rating ? 'Thanks for your rating!' : `Rate ${trip.rider.name}`}</SectionTitle>
+              <SectionTitle>{o.rating ? 'Thanks for your rating!' : `Rate ${riderProfile?.full_name?.split(' ')[0] || 'your rider'}`}</SectionTitle>
               <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <Pressable key={n} onPress={() => rateTrip(trip.id, n)} hitSlop={6}>
-                    <MaterialCommunityIcons name={(trip.rating ?? 0) >= n ? 'star' : 'star-outline'} size={36} color={colors.warning} />
+                  <Pressable key={n} disabled={!!o.rating || busy} onPress={() => act(() => rateOrder(o.id, n))} hitSlop={6}>
+                    <MaterialCommunityIcons name={(o.rating ?? 0) >= n ? 'star' : 'star-outline'} size={36} color={colors.warning} />
                   </Pressable>
                 ))}
               </View>
@@ -91,41 +103,52 @@ export default function Track() {
           )}
 
           <Card>
-            <StopLine icon={pabili ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={pabili ? 'Buy from' : 'Pick up from'} text={trip.pickup.name} />
-            <StopLine icon="flag-checkered" color={colors.primary} title={pabili ? 'Deliver to' : 'Bring to'} text={trip.dropoff.name} />
-            {trip.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Note" text={trip.note} /> : null}
+            <StopLine icon={pabili ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={pabili ? 'Buy from' : 'Pick up from'} text={o.pickup_name} />
+            <StopLine icon="flag-checkered" color={colors.primary} title={pabili ? 'Deliver to' : 'Bring to'} text={o.dropoff_name} />
+            {o.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Instructions" text={o.note} /> : null}
           </Card>
 
-          <Card>
-            <SectionTitle>{pabili ? 'Shopping list' : `${CARGO[trip.cargo ?? 'parcel'].emoji}  ${CARGO[trip.cargo ?? 'parcel'].label}`}</SectionTitle>
-            {!pabili && (
-              <View style={{ gap: 4 }}>
-                {trip.description ? <Text style={{ color: colors.text }}>{trip.description}</Text> : null}
-                {trip.sender ? <Row label={trip.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(trip.sender)} /> : null}
-                <Row label="Received by" value={trip.receiver ? contactText(trip.receiver) : 'You'} />
-                <Row label="Vehicle" value={VEHICLES[trip.vehicle ?? 'moto'].label} />
-                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
-              </View>
-            )}
-            {trip.items?.map((i) => (
-              <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>
-            ))}
-            {pabili && <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />}
-            {trip.lines.map((l) => <Row key={l.label} label={l.label} value={peso(l.amount)} />)}
-            {pabili && <Row label="Items" value="Pay rider as per receipt" />}
-            {trip.budget ? <Row label="Item spending limit" value={peso(trip.budget)} /> : null}
-            <Row label={`${pabili ? 'Delivery fee' : 'Total'} · ${PAYMENT_LABELS[trip.payment]}`} value={peso(trip.total)} bold />
-            {pabili && (
-              <Text style={{ color: colors.muted, marginTop: 6, lineHeight: 19 }}>
-                The rider pays for your items at the store. Repay the exact receipt amount when your order arrives.
-              </Text>
-            )}
-          </Card>
+          <Summary o={o} />
 
-          {canCancel(trip, now) && <Button title={pabili ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} />}
+          {canCustomerCancel(o) && <Button title={pabili ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} loading={busy} />}
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+function Summary({ o }: { o: Order }) {
+  const pabili = o.kind === 'pabili';
+  const cargo = CARGO[o.cargo ?? 'parcel'];
+  const receipt = o.receipt_amount != null ? Number(o.receipt_amount) : null;
+  return (
+    <Card>
+      <SectionTitle>{pabili ? 'Shopping list' : `${cargo.emoji}  ${cargo.label}`}</SectionTitle>
+      {pabili
+        ? o.items?.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>)
+        : (
+          <View style={{ gap: 4 }}>
+            {o.description ? <Text style={{ color: colors.text }}>{o.description}</Text> : null}
+            {o.sender ? <Row label={o.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(o.sender)} /> : null}
+            <Row label="Received by" value={o.receiver ? contactText(o.receiver) : 'You'} />
+            <Row label="Vehicle" value={VEHICLES[o.vehicle].label} />
+          </View>
+        )}
+      <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
+      <Row label={`${pabili ? 'Delivery fee' : 'Pasugo fee'} (${Number(o.km).toFixed(1)} km)`} value={peso(Number(o.base_fee))} />
+      {Number(o.discount) > 0 && <Row label={`Promo ${o.promo_code}`} value={`−${peso(Number(o.discount))}`} valueColor={colors.ride} />}
+      {pabili && <Row label="Items" value={receipt != null ? `${peso(receipt)} (receipt)` : 'Pay rider as per receipt'} />}
+      {o.budget ? <Row label="Item spending limit" value={peso(Number(o.budget))} /> : null}
+      <Row
+        label={`${pabili && receipt != null ? 'Total to pay the rider' : 'You pay'} · ${PAYMENT_LABELS[o.payment]}`}
+        value={peso(Number(o.fee) + (pabili && receipt != null ? receipt : 0))} bold
+      />
+      {pabili && receipt == null && (
+        <Text style={{ color: colors.muted, marginTop: 6, lineHeight: 19 }}>
+          The rider pays for your items at the store. Repay the exact receipt amount when your order arrives.
+        </Text>
+      )}
+    </Card>
   );
 }
 

@@ -29,7 +29,7 @@ export const CATEGORIES: { key: Category; emoji: string; example: string }[] = [
 ];
 export const DEFAULT_ITEM_EXAMPLE = 'e.g. 1 pack of AA batteries';
 
-/** Suggested places to buy from. Customers can also choose any other store. */
+/** Starter stores. The apps load stores from the database; this list only generates supabase/seed.sql. */
 export const STORES: Store[] = [
   // Food
   {

@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@supabase/supabase-js": "2.118.0",
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
     "expo-linking": "~58.0.16",
@@ -34,7 +35,11 @@
     "build:preview": "npx eas-cli@latest build -p android --profile preview",
     "start:rider": "APP_VARIANT=rider expo start",
     "build:rider:android": "npx eas-cli@latest build -p android --profile rider-preview",
-    "build:rider:ios": "npx eas-cli@latest build -p ios --profile rider-production"
+    "build:rider:ios": "npx eas-cli@latest build -p ios --profile rider-production",
+    "start:admin": "APP_VARIANT=admin expo start --web",
+    "build:admin": "APP_VARIANT=admin expo export --platform web --output-dir dist-admin",
+    "deploy:admin": "npm run build:admin && npx eas-cli@latest deploy --export-dir dist-admin",
+    "test:db": "supabase/tests/run.sh"
   },
   "private": true
 }

@@ -5,7 +5,10 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
-import PaymentPicker from '@/components/PaymentPicker';
+import PaymentPicker, { paymentFor } from '@/components/PaymentPicker';
+import PromoField, { AppliedPromo } from '@/components/PromoField';
+import { placeOrder, usePrices } from '@/lib/api';
+import { errorText } from '@/lib/supabase';
 import { Button, Card, SectionTitle } from '@/components/ui';
 import { etaMinutes, pasugoFee, Vehicle, VEHICLES } from '@/lib/pricing';
 import { useRoute } from '@/lib/routing';
@@ -14,7 +17,10 @@ import { Cargo, CARGO } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Pasugo() {
-  const { state, setPasugoStop, swapPasugoStops, bookPasugo } = useStore();
+  const { state, setPasugoStop, swapPasugoStops, clearPasugo } = useStore();
+  const prices = usePrices();
+  const [promo, setPromo] = useState<AppliedPromo>(null);
+  const [booking, setBooking] = useState(false);
   const [cargo, setCargo] = useState<Cargo>('document');
   const [vehicle, setVehicle] = useState<Vehicle>('moto');
   const [description, setDescription] = useState('');
@@ -39,9 +45,13 @@ export default function Pasugo() {
     ...(dropoff ? [{ id: 'd', coord: dropoff.location, kind: 'dropoff' as const }] : []),
   ];
   const tooShort = !!route && km < 0.3;
+  const baseFee = route ? pasugoFee(km, vehicle, prices) : 0;
+  const fee = Math.max(0, baseFee - (promo?.discount ?? 0));
+  // A promo's discount depends on the fee, so re-check it when the trip or vehicle changes.
+  useEffect(() => setPromo(null), [vehicle, km]);
 
-  const book = () => {
-    if (!pickup || !dropoff || !route) return;
+  const book = async () => {
+    if (!pickup || !dropoff || !route || booking) return;
     const missing = [
       !description.trim() && (person ? 'who the rider is picking up' : 'what the rider is picking up'),
       person && !senderPhone.trim() && "the passenger's mobile number",
@@ -50,13 +60,23 @@ export default function Pasugo() {
     if (missing.length) return Alert.alert('A few details missing', `Please add ${missing.join(' and ')}.`);
 
     const contact = (name: string, phone: string) => (name.trim() || phone.trim() ? { name: name.trim(), phone: phone.trim() } : undefined);
-    const id = bookPasugo({
-      pickup, dropoff, route, vehicle, cargo, description: description.trim(),
-      sender: contact(senderName, senderPhone),
-      receiver: receiveMyself ? undefined : contact(receiverName, receiverPhone),
-    });
-    setDescription(''); setSenderName(''); setSenderPhone(''); setReceiverName(''); setReceiverPhone(''); setReceiveMyself(true);
-    router.push(`/track/${id}`);
+    setBooking(true);
+    try {
+      const o = await placeOrder({
+        kind: 'pasugo', pickup, dropoff, km: route.km, path: route.estimated ? null : route.path, vehicle, cargo,
+        description: description.trim(), payment: paymentFor(state.payment), promo_code: promo?.code,
+        sender: contact(senderName, senderPhone),
+        receiver: receiveMyself ? undefined : contact(receiverName, receiverPhone),
+      });
+      setDescription(''); setSenderName(''); setSenderPhone(''); setReceiverName(''); setReceiverPhone(''); setReceiveMyself(true);
+      setPromo(null);
+      clearPasugo();
+      router.push(`/track/${o.id}`);
+    } catch (e) {
+      Alert.alert('Could not book', errorText(e));
+    } finally {
+      setBooking(false);
+    }
   };
 
   return (
@@ -140,7 +160,7 @@ export default function Pasugo() {
                         <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{t.label}</Text>
                         <Text style={{ color: colors.muted, marginTop: 2 }}>{t.blurb}</Text>
                       </View>
-                      <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{peso(pasugoFee(km, k))}</Text>
+                      <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{peso(pasugoFee(km, k, prices))}</Text>
                     </Pressable>
                   );
                 })}
@@ -148,11 +168,13 @@ export default function Pasugo() {
                 <Card style={{ paddingVertical: 8 }}>
                   <Pressable onPress={() => setShowPay((v) => !v)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
                     <MaterialCommunityIcons name="wallet-outline" size={22} color={colors.text} />
-                    <Text style={{ flex: 1, marginLeft: 12, fontWeight: '600', color: colors.text }}>Payment: {state.payment.toUpperCase()}</Text>
+                    <Text style={{ flex: 1, marginLeft: 12, fontWeight: '600', color: colors.text }}>Payment: {paymentFor(state.payment).toUpperCase()}</Text>
                     <MaterialCommunityIcons name={showPay ? 'chevron-up' : 'chevron-down'} size={22} color={colors.muted} />
                   </Pressable>
                   {showPay && <PaymentPicker />}
                 </Card>
+
+                <PromoField kind="pasugo" baseFee={baseFee} value={promo} onChange={setPromo} />
 
                 {person && vehicle === 'moto' && (
                   <View style={styles.safety}>
@@ -162,8 +184,8 @@ export default function Pasugo() {
                 )}
 
                 <Button
-                  title={tooShort ? 'Pickup and drop-off are too close' : `Book pasugo · ${peso(pasugoFee(km, vehicle))}`}
-                  color={colors.ride} onPress={book} disabled={tooShort}
+                  title={tooShort ? 'Pickup and drop-off are too close' : `Book pasugo · ${peso(fee)}`}
+                  color={colors.ride} onPress={book} disabled={tooShort} loading={booking}
                 />
               </>
             ) : (
