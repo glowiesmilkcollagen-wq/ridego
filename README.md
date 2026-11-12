@@ -79,7 +79,7 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 
 ## Going live (what a real launch still needs)
 
-- **Backend + database** (e.g. Supabase or Firebase): user accounts/OTP login, restaurants & menus, orders, real-time rider location, dispatch (matching nearest rider).
+- **Backend + database** (e.g. Supabase or Firebase): user accounts/OTP login, store listings, orders, real-time rider location, dispatch (matching nearest rider).
 - **Payments**: GCash/Maya/cards via a gateway such as PayMongo or Xendit.
 - **Receipt photos**: let riders upload a photo of the store receipt so customers can verify the item cost.
 - **Rider verification** (license, OR/CR, NBI clearance) and **push notifications**.
