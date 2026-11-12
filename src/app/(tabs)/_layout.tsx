@@ -15,7 +15,7 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary, headerShown: false, tabBarLabelStyle: { fontWeight: '600' } }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home-variant') }} />
       <Tabs.Screen name="food" options={{ title: 'Food', tabBarIcon: icon('food'), tabBarBadge: count || undefined }} />
-      <Tabs.Screen name="ride" options={{ title: 'Ride', tabBarIcon: icon('motorbike') }} />
+      <Tabs.Screen name="pasugo" options={{ title: 'Pasugo', tabBarIcon: icon('package-variant-closed') }} />
       <Tabs.Screen name="activity" options={{ title: 'Activity', tabBarIcon: icon('receipt-text-outline') }} />
       <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: icon('account-circle-outline') }} />
     </Tabs>

@@ -1,21 +1,21 @@
-export type RideType = 'moto' | 'moto_plus' | 'car';
+export type Vehicle = 'moto' | 'car';
 
-export const RIDE_TYPES: Record<RideType, { label: string; icon: string; seats: number; base: number; perKm: number; perMin: number; min: number; blurb: string }> = {
-  moto: { label: 'Moto', icon: 'motorbike', seats: 1, base: 40, perKm: 10, perMin: 1, min: 50, blurb: 'Beat traffic on two wheels' },
-  moto_plus: { label: 'Moto+', icon: 'motorbike-electric', seats: 1, base: 55, perKm: 12, perMin: 1.2, min: 70, blurb: 'Top-rated riders, newer bikes' },
-  car: { label: 'Car', icon: 'car', seats: 4, base: 90, perKm: 18, perMin: 2, min: 140, blurb: 'Room for up to 4' },
+/** Pasugo vehicles. Fares are computed by the app from distance and expected travel time. */
+export const VEHICLES: Record<Vehicle, { label: string; icon: string; base: number; perKm: number; perMin: number; min: number; blurb: string }> = {
+  moto: { label: 'Motorcycle', icon: 'motorbike', base: 40, perKm: 10, perMin: 1, min: 50, blurb: 'Documents, small bags, or 1 person' },
+  car: { label: 'Car', icon: 'car', base: 90, perKm: 18, perMin: 2, min: 140, blurb: 'Bigger items, or up to 4 people' },
 };
 
 /** Average city speed in km/h by vehicle, used for ETA estimates. */
-const SPEED: Record<RideType, number> = { moto: 24, moto_plus: 24, car: 16 };
+const SPEED: Record<Vehicle, number> = { moto: 24, car: 16 };
 
-export function etaMinutes(km: number, type: RideType = 'moto') {
-  return Math.max(3, Math.round((km / SPEED[type]) * 60));
+export function etaMinutes(km: number, vehicle: Vehicle = 'moto') {
+  return Math.max(3, Math.round((km / SPEED[vehicle]) * 60));
 }
 
-export function rideFare(km: number, type: RideType) {
-  const t = RIDE_TYPES[type];
-  return Math.round(Math.max(t.min, t.base + t.perKm * km + t.perMin * etaMinutes(km, type)));
+export function pasugoFee(km: number, vehicle: Vehicle) {
+  const t = VEHICLES[vehicle];
+  return Math.round(Math.max(t.min, t.base + t.perKm * km + t.perMin * etaMinutes(km, vehicle)));
 }
 
 /**

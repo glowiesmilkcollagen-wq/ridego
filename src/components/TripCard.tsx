@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { getProgress, Trip } from '@/lib/trips';
+import { CARGO, getProgress, Trip } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function TripCard({ trip, now }: { trip: Trip; now: number }) {
@@ -10,12 +10,12 @@ export default function TripCard({ trip, now }: { trip: Trip; now: number }) {
   const food = trip.kind === 'food';
   const status = p.cancelled ? 'Cancelled' : p.phase.label;
   const statusColor = p.cancelled ? colors.danger : p.done ? colors.muted : food ? colors.primary : colors.ride;
-  const title = food ? trip.pickup.name : `To ${trip.dropoff.name}`;
+  const title = food ? trip.pickup.name : `${CARGO[trip.cargo ?? 'parcel'].label} · from ${trip.pickup.name}`;
   const sub = food ? `${trip.items?.reduce((s, l) => s + l.qty, 0)} items` : `${trip.km.toFixed(1)} km · ${new Date(trip.createdAt).toLocaleDateString()}`;
   return (
     <Pressable onPress={() => router.push(`/track/${trip.id}`)} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}>
       <View style={[styles.icon, { backgroundColor: food ? colors.primarySoft : colors.rideSoft }]}>
-        <MaterialCommunityIcons name={food ? 'food' : 'motorbike'} size={22} color={food ? colors.primary : colors.ride} />
+        <MaterialCommunityIcons name={(food ? 'food' : CARGO[trip.cargo ?? 'parcel'].icon) as any} size={22} color={food ? colors.primary : colors.ride} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>

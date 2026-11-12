@@ -1,10 +1,12 @@
 import { PLACES, RESTAURANTS } from './data';
 import { LatLng, roadKm } from './geo';
-import { deliveryFee, RideType, rideFare, RIDER_SHARE } from './pricing';
+import { deliveryFee, pasugoFee, RIDER_SHARE } from './pricing';
+import { Cargo, CARGO } from './trips';
 
 export type DriverJob = {
   id: string;
-  kind: 'food' | 'ride';
+  kind: 'food' | 'pasugo';
+  cargo?: Cargo;
   pickup: { name: string; location: LatLng };
   dropoff: { name: string; location: LatLng };
   km: number;
@@ -27,11 +29,11 @@ const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
 export const STAGES: Record<DriverJob['kind'], string[]> = {
   food: ['Arrived at store', 'Items bought', 'Delivered & paid'],
-  ride: ['Arrived at pickup', 'Start trip', 'Complete trip'],
+  pasugo: ['Arrived at pickup', 'Picked up', 'Delivered'],
 };
 export const STAGE_STATUS: Record<DriverJob['kind'], string[]> = {
   food: ['Head to the store', 'Order and pay for the items', 'Deliver and collect payment'],
-  ride: ['Head to pickup point', 'Passenger boarding', 'Drive to destination'],
+  pasugo: ['Head to pickup point', 'Collect the item or passenger', 'Bring to the drop-off point'],
 };
 
 /** Generates mock incoming requests. In production these arrive from your dispatch backend. */
@@ -57,15 +59,15 @@ export function generateJobs(count = 4): DriverJob[] {
     let from = pick(PLACES);
     while (from.id === drop.id) from = pick(PLACES);
     const km = roadKm(from.location, drop.location);
-    const type: RideType = Math.random() < 0.8 ? 'moto' : 'moto_plus';
+    const cargo = pick<Cargo>(['document', 'parcel', 'person']);
     return {
-      id: `J-${Date.now().toString(36)}-${i}`, kind: 'ride', km, stage: 0, createdAt: Date.now(),
+      id: `J-${Date.now().toString(36)}-${i}`, kind: 'pasugo', cargo, km, stage: 0, createdAt: Date.now(),
       pickup: { name: `${from.name}, ${from.area}`, location: from.location },
       dropoff: { name: `${drop.name}, ${drop.area}`, location: drop.location },
-      fee: rideFare(km, type),
-      payout: Math.round(rideFare(km, type) * RIDER_SHARE),
+      fee: pasugoFee(km, 'moto'),
+      payout: Math.round(pasugoFee(km, 'moto') * RIDER_SHARE),
       customer: pick(CUSTOMERS),
-      detail: type === 'moto' ? 'Moto · 1 passenger' : 'Moto+ · 1 passenger',
+      detail: CARGO[cargo].label,
     };
   });
 }

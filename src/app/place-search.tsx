@@ -12,7 +12,7 @@ import { colors, radius } from '@/lib/theme';
 export default function PlaceSearch() {
   const { target } = useLocalSearchParams<{ target: 'pickup' | 'dropoff' | 'home' | 'store' }>();
   const startErrand = useStartErrand();
-  const { state, setRideStop, setHome } = useStore();
+  const { state, setPasugoStop, setHome } = useStore();
   const [q, setQ] = useState('');
   const [locating, setLocating] = useState(false);
 
@@ -24,7 +24,7 @@ export default function PlaceSearch() {
   const choose = (stop: Stop) => {
     if (target === 'store') return startErrand(stop, null, 'replace');
     if (target === 'home') setHome(stop);
-    else setRideStop(target ?? 'dropoff', stop);
+    else setPasugoStop(target ?? 'dropoff', stop);
     router.back();
   };
 
@@ -92,7 +92,7 @@ export default function PlaceSearch() {
   );
 }
 
-const TITLES = { pickup: 'Pickup point', dropoff: 'Destination', home: 'Delivery address', store: 'Where should the rider buy?' };
+const TITLES = { pickup: 'Pick up from', dropoff: 'Bring to', home: 'Delivery address', store: 'Where should the rider buy?' };
 
 const styles = StyleSheet.create({
   search: {

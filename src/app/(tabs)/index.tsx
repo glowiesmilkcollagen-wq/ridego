@@ -40,10 +40,10 @@ export default function Home() {
             <Text style={styles.serviceTitle}>Food</Text>
             <Text style={styles.serviceSub}>We buy it & bring it to you</Text>
           </Pressable>
-          <Pressable style={[styles.service, { backgroundColor: colors.ride }]} onPress={() => router.push('/ride')}>
-            <Text style={styles.serviceEmoji}>🏍️</Text>
-            <Text style={styles.serviceTitle}>Ride</Text>
-            <Text style={styles.serviceSub}>Motorcycle taxi & cars</Text>
+          <Pressable style={[styles.service, { backgroundColor: colors.ride }]} onPress={() => router.push('/pasugo')}>
+            <Text style={styles.serviceEmoji}>📦</Text>
+            <Text style={styles.serviceTitle}>Pasugo</Text>
+            <Text style={styles.serviceSub}>We pick up anything — or anyone</Text>
           </Pressable>
         </View>
 
@@ -51,7 +51,7 @@ export default function Home() {
           <MaterialCommunityIcons name="card-account-details-star-outline" size={28} color={colors.text} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a RideGo rider</Text>
-            <Text style={{ color: colors.muted, marginTop: 2 }}>Buy & deliver or give rides on your own schedule</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>Do pabili and pasugo jobs on your own schedule</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>

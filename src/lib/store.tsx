@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PLATES, RIDER_NAMES } from './data';
 import { DEFAULT_LOCATION, LatLng, offset, roadKm } from './geo';
-import { deliveryFee, RideType, rideFare, RIDE_TYPES } from './pricing';
-import { ErrandItem, PaymentMethod, Stop, Trip } from './trips';
+import { deliveryFee, pasugoFee, Vehicle, VEHICLES } from './pricing';
+import { Cargo, Contact, ErrandItem, PaymentMethod, Stop, Trip } from './trips';
 import { DriverJob } from './driver';
 
 type Profile = { name: string; phone: string };
@@ -19,7 +19,7 @@ type State = {
   trips: Trip[];
   payment: PaymentMethod;
   driver: DriverState;
-  rideDraft: { pickup: Stop | null; dropoff: Stop | null };
+  pasugoDraft: { pickup: Stop | null; dropoff: Stop | null };
 };
 
 const EMPTY_ERRAND: Errand = { store: null, storeId: null, items: [] };
@@ -31,11 +31,11 @@ const INITIAL: State = {
   trips: [],
   payment: 'cash',
   driver: { online: false, earnings: 0, completed: 0, active: null, history: [] },
-  rideDraft: { pickup: null, dropoff: null },
+  pasugoDraft: { pickup: null, dropoff: null },
 };
 
-// v2: food orders became buy-and-deliver errands; older saved data is not compatible.
-const KEY = 'ridego-state-v2';
+// v3: rides became pasugo (pick up & deliver); older saved data is not compatible.
+const KEY = 'ridego-state-v3';
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -84,8 +84,8 @@ function useStoreValue() {
     () => ({
       setProfile: (profile: Profile) => update(() => ({ profile })),
       setHome: (home: Stop) => update(() => ({ home })),
-      setRideStop: (which: 'pickup' | 'dropoff', stop: Stop | null) => update((s) => ({ rideDraft: { ...s.rideDraft, [which]: stop } })),
-      swapRideStops: () => update((s) => ({ rideDraft: { pickup: s.rideDraft.dropoff, dropoff: s.rideDraft.pickup } })),
+      setPasugoStop: (which: 'pickup' | 'dropoff', stop: Stop | null) => update((s) => ({ pasugoDraft: { ...s.pasugoDraft, [which]: stop } })),
+      swapPasugoStops: () => update((s) => ({ pasugoDraft: { pickup: s.pasugoDraft.dropoff, dropoff: s.pasugoDraft.pickup } })),
       setPayment: (payment: PaymentMethod) => update(() => ({ payment })),
 
       setErrandStore: (store: Stop, storeId: string | null) =>
@@ -121,19 +121,20 @@ function useStoreValue() {
         return trip.id;
       },
 
-      bookRide: (pickup: Stop, dropoff: Stop, rideType: RideType): string => {
-        const id = `R-${uid()}`;
-        setState((s) => {
-          const km = roadKm(pickup.location, dropoff.location);
-          const fare = rideFare(km, rideType);
-          const trip: Trip = {
-            id, kind: 'ride', createdAt: Date.now(), pickup, dropoff, km, rideType,
-            rider: makeRider(pickup.location), payment: s.payment,
-            lines: [{ label: `${RIDE_TYPES[rideType].label} fare (${km.toFixed(1)} km)`, amount: fare }],
-            total: fare,
-          };
-          return { ...s, trips: [trip, ...s.trips] };
-        });
+      bookPasugo: (o: {
+        pickup: Stop; dropoff: Stop; vehicle: Vehicle; cargo: Cargo; description: string; sender?: Contact; receiver?: Contact;
+      }): string => {
+        const id = `P-${uid()}`;
+        const km = roadKm(o.pickup.location, o.dropoff.location);
+        const fee = pasugoFee(km, o.vehicle);
+        const trip: Trip = {
+          id, kind: 'pasugo', createdAt: Date.now(), pickup: o.pickup, dropoff: o.dropoff, km,
+          vehicle: o.vehicle, cargo: o.cargo, description: o.description, sender: o.sender, receiver: o.receiver,
+          rider: makeRider(o.pickup.location), payment: latest.current.payment,
+          lines: [{ label: `${VEHICLES[o.vehicle].label} pasugo (${km.toFixed(1)} km)`, amount: fee }],
+          total: fee,
+        };
+        update((cur) => ({ trips: [trip, ...cur.trips], pasugoDraft: { pickup: null, dropoff: cur.home } }));
         return id;
       },
 

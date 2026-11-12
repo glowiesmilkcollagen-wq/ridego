@@ -1,4 +1,4 @@
-# RideGo — Buy & deliver + motorcycle taxi
+# RideGo — Pabili (buy & deliver) + Pasugo (pick up & deliver)
 
 One app for **iPhone and Android** (built with Expo / React Native):
 
@@ -6,11 +6,13 @@ One app for **iPhone and Android** (built with Expo / React Native):
   (quick-add suggestions, quantities, instructions, optional spending limit). A rider goes there, orders and **pays with their own money**,
   then delivers. The customer repays the items per the receipt, plus the delivery fee.
   **The app only computes the delivery fee** (by distance from the store to the customer). No menus, prices or restaurant involvement.
-- **Ride** — motorcycle taxi (Moto, Moto+) and Car: pick pickup/destination (or use GPS), see fares, book, track the rider live, cancel, rate.
-- **Rider mode** — go online, receive buy & deliver and ride requests, accept, navigate (opens Apple/Google Maps).
+- **Pasugo** — ask a rider to pick something up at one place and bring it to you or anywhere: a **document / folder**,
+  a **bag / package**, or a **person**. Set pickup and drop-off (drop-off defaults to your address), describe what or who,
+  add the contact at the pickup and an optional receiver, choose **Motorcycle** or **Car**, see the fee, book, and track the rider live.
+- **Rider mode** — go online, receive pabili and pasugo requests, accept, navigate (opens Apple/Google Maps).
   For buy & deliver the rider sees the shopping list, enters the receipt total after paying, and the app shows how much to collect
   (receipt + delivery fee). Earnings dashboard.
-- **Activity & Account** — order/ride history, profile, saved address.
+- **Activity & Account** — order and pasugo history, profile, saved address.
 
 > ⚠️ This version runs on **demo data stored on the phone**. Stores, riders and trip progress are simulated
 > (a trip finishes in ~1–2 minutes). To run a real business you need a backend — see "Going live" below.
@@ -69,7 +71,7 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 
 ## Before you publish — change these
 
-1. `app.json` → `ios.bundleIdentifier` and `android.package` (`com.ridego.app`) to your own unique ID, e.g. `com.yourcompany.ridego`. Cannot be changed after first upload.
+1. `app.json` → `ios.bundleIdentifier` and `android.package` are set to `com.ajaridego.ridego`. Keep them — they cannot be changed after the first store upload.
 2. `app.json` → replace `REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_KEY` with a Google Maps SDK for Android key
    (Google Cloud Console → enable "Maps SDK for Android"). **Without it the map is blank on Android store builds.** iOS uses Apple Maps, no key needed.
 3. App name/icon: `app.json` → `name`, and replace the images in `assets/`.
@@ -81,13 +83,13 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 - **Receipt photos**: let riders upload a photo of the store receipt so customers can verify the item cost.
 - **Rider verification** (license, OR/CR, NBI clearance) and **push notifications**.
 - **Places search**: replace the preset list in `src/lib/data.ts` with Google Places.
-- **Legal**: motorcycle taxi operation in the Philippines is regulated (LTFRB/DOTr pilot program) — check permits before taking real passengers.
+- **Legal**: carrying people on motorcycles for a fee (pasugo "Person") is regulated in the Philippines (LTFRB/DOTr motorcycle-taxi rules), and courier services may need permits — check before taking real passengers or parcels.
 
 ## Project layout
 
 ```
 src/app/            screens (Expo Router — each file is a screen)
-  (tabs)/           Home, Food, Ride, Activity, Account
+  (tabs)/           Home, Food (pabili), Pasugo, Activity, Account
   order             what to buy (shopping list) + delivery fee
   track/[id]        live tracking
   driver            rider mode
@@ -95,4 +97,4 @@ src/app/            screens (Expo Router — each file is a screen)
 src/lib/            data, pricing, trip simulation, app state
 src/components/     map, cards, buttons
 ```
-Fares & the delivery fee: `src/lib/pricing.ts` (`deliveryFee`: ₱49 for the first 2 km, then ₱10 per km). Suggested places: `src/lib/data.ts`.
+Prices: `src/lib/pricing.ts` — `deliveryFee` for pabili (₱49 for the first 2 km, then ₱10 per km) and `VEHICLES` / `pasugoFee` for pasugo. Suggested places: `src/lib/data.ts`.

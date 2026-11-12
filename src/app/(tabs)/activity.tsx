@@ -9,7 +9,7 @@ import { colors } from '@/lib/theme';
 export default function Activity() {
   const { state } = useStore();
   const now = useNow(2000);
-  const [filter, setFilter] = useState<'all' | 'food' | 'ride'>('all');
+  const [filter, setFilter] = useState<'all' | 'food' | 'pasugo'>('all');
   const trips = state.trips.filter((t) => filter === 'all' || t.kind === filter);
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -23,12 +23,12 @@ export default function Activity() {
             <View style={{ flexDirection: 'row', marginBottom: 14 }}>
               <Chip label="All" active={filter === 'all'} onPress={() => setFilter('all')} />
               <Chip label="Food" icon="🍔" active={filter === 'food'} onPress={() => setFilter('food')} />
-              <Chip label="Rides" icon="🏍️" active={filter === 'ride'} onPress={() => setFilter('ride')} />
+              <Chip label="Pasugo" icon="📦" active={filter === 'pasugo'} onPress={() => setFilter('pasugo')} />
             </View>
           </View>
         }
         renderItem={({ item }) => <TripCard trip={item} now={now} />}
-        ListEmptyComponent={<Empty icon="receipt-text-outline" title="Nothing here yet" subtitle="Your food orders and rides will show up here." />}
+        ListEmptyComponent={<Empty icon="receipt-text-outline" title="Nothing here yet" subtitle="Your buy & deliver orders and pasugo requests will show up here." />}
       />
     </SafeAreaView>
   );

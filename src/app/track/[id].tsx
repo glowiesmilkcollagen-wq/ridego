@@ -5,8 +5,8 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
-import { RIDE_TYPES } from '@/lib/pricing';
-import { canCancel, getProgress, PAYMENT_LABELS, PHASES } from '@/lib/trips';
+import { VEHICLES } from '@/lib/pricing';
+import { canCancel, CARGO, getProgress, PAYMENT_LABELS, PHASES } from '@/lib/trips';
 import { useNow, useStore } from '@/lib/store';
 import { colors, peso, radius } from '@/lib/theme';
 
@@ -31,7 +31,7 @@ export default function Track() {
   ];
 
   const onCancel = () =>
-    Alert.alert(food ? 'Cancel order?' : 'Cancel ride?', 'This cannot be undone.', [
+    Alert.alert(food ? 'Cancel order?' : 'Cancel pasugo?', 'This cannot be undone.', [
       { text: 'Keep it', style: 'cancel' },
       { text: 'Cancel', style: 'destructive', onPress: () => cancelTrip(trip.id) },
     ]);
@@ -40,9 +40,9 @@ export default function Track() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: food ? `Order ${trip.id}` : `Ride ${trip.id}` }} />
+      <Stack.Screen options={{ title: food ? `Order ${trip.id}` : `Pasugo ${trip.id}` }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <MapPreview pins={pins} route={[trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.rideType === 'car' ? 'car' : 'motorbike'} />
+        <MapPreview pins={pins} route={[trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.vehicle === 'car' ? 'car' : 'motorbike'} />
 
         <View style={{ padding: 16, gap: 14 }}>
           <Card>
@@ -62,7 +62,7 @@ export default function Track() {
           {showRider && !p.cancelled && (
             <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.avatar, { backgroundColor: food ? colors.primarySoft : colors.rideSoft }]}>
-                <MaterialCommunityIcons name={trip.rideType === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
+                <MaterialCommunityIcons name={trip.vehicle === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{trip.rider.name}</Text>
@@ -91,13 +91,22 @@ export default function Track() {
           )}
 
           <Card>
-            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'Buy from' : 'Pickup'} text={trip.pickup.name} />
-            <StopLine icon="flag-checkered" color={colors.primary} title={food ? 'Deliver to' : 'Destination'} text={trip.dropoff.name} />
+            <StopLine icon={food ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={food ? 'Buy from' : 'Pick up from'} text={trip.pickup.name} />
+            <StopLine icon="flag-checkered" color={colors.primary} title={food ? 'Deliver to' : 'Bring to'} text={trip.dropoff.name} />
             {trip.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Note" text={trip.note} /> : null}
           </Card>
 
           <Card>
-            <SectionTitle>{food ? 'Shopping list' : `${RIDE_TYPES[trip.rideType ?? 'moto'].label} ride`}</SectionTitle>
+            <SectionTitle>{food ? 'Shopping list' : `${CARGO[trip.cargo ?? 'parcel'].emoji}  ${CARGO[trip.cargo ?? 'parcel'].label}`}</SectionTitle>
+            {!food && (
+              <View style={{ gap: 4 }}>
+                {trip.description ? <Text style={{ color: colors.text }}>{trip.description}</Text> : null}
+                {trip.sender ? <Row label={trip.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(trip.sender)} /> : null}
+                <Row label="Received by" value={trip.receiver ? contactText(trip.receiver) : 'You'} />
+                <Row label="Vehicle" value={VEHICLES[trip.vehicle ?? 'moto'].label} />
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
+              </View>
+            )}
             {trip.items?.map((i) => (
               <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>
             ))}
@@ -113,12 +122,14 @@ export default function Track() {
             )}
           </Card>
 
-          {canCancel(trip, now) && <Button title={food ? 'Cancel order' : 'Cancel ride'} variant="outline" color={colors.danger} onPress={onCancel} />}
+          {canCancel(trip, now) && <Button title={food ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} />}
         </View>
       </ScrollView>
     </View>
   );
 }
+
+const contactText = (c: { name: string; phone: string }) => [c.name, c.phone].filter(Boolean).join(' · ');
 
 function IconBtn({ icon, onPress }: { icon: string; onPress: () => void }) {
   return (

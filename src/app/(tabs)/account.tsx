@@ -44,13 +44,13 @@ export default function Account() {
         <Card style={{ paddingVertical: 4 }}>
           <Item icon="home-outline" label="Saved address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
           <Item icon="receipt-text-outline" label="Orders & rides" sub={`${state.trips.length} total`} onPress={() => router.push('/activity')} />
-          <Item icon="card-account-details-star-outline" label="Rider mode" sub="Earn by buying & delivering, and driving" onPress={() => router.push('/driver')} last />
+          <Item icon="card-account-details-star-outline" label="Rider mode" sub="Earn with pabili and pasugo jobs" onPress={() => router.push('/driver')} last />
         </Card>
 
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo v1.1 — buy & deliver and motorcycle taxi. Riders buy what you ask for at any store and bring it to you; the app only charges the delivery fee. This build runs on demo data: riders and trip progress are simulated on the device.
+            RideGo v1.2 — Pabili (buy & deliver) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. This build runs on demo data: riders and trip progress are simulated on the device.
           </Text>
         </Card>
 

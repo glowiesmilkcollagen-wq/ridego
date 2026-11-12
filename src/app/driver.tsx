@@ -5,6 +5,7 @@ import MapPreview from '@/components/MapPreview';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
 import { DriverJob, generateJobs, STAGE_STATUS, STAGES } from '@/lib/driver';
 import { useStore } from '@/lib/store';
+import { CARGO } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Driver() {
@@ -35,7 +36,7 @@ export default function Driver() {
       <Card style={[styles.status, driver.online && { backgroundColor: colors.rideSoft, borderColor: colors.ride }]}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{driver.online ? 'You are online' : 'You are offline'}</Text>
-          <Text style={{ color: colors.muted, marginTop: 2 }}>{driver.online ? 'Receiving delivery and ride requests' : 'Go online to start earning'}</Text>
+          <Text style={{ color: colors.muted, marginTop: 2 }}>{driver.online ? 'Receiving pabili and pasugo requests' : 'Go online to start earning'}</Text>
         </View>
         <Switch
           value={driver.online}
@@ -66,8 +67,8 @@ export default function Driver() {
           {jobs.map((j) => (
             <Card key={j.id} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <MaterialCommunityIcons name={j.kind === 'food' ? 'food' : 'motorbike'} size={22} color={j.kind === 'food' ? colors.primary : colors.ride} />
-                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'food' ? 'Buy & deliver' : 'Moto ride'} · {j.km.toFixed(1)} km</Text>
+                <MaterialCommunityIcons name={(j.kind === 'food' ? 'food' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={22} color={j.kind === 'food' ? colors.primary : colors.ride} />
+                <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{j.kind === 'food' ? 'Buy & deliver' : 'Pasugo'} · {j.km.toFixed(1)} km</Text>
                 <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(j.payout)}</Text>
               </View>
               <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {j.pickup.name}</Text>
@@ -83,7 +84,7 @@ export default function Driver() {
           {jobs.length === 0 && <Text style={{ color: colors.muted, textAlign: 'center' }}>Looking for requests near you…</Text>}
         </View>
       ) : (
-        <Empty icon="sleep" title="Offline" subtitle="Switch on to see food delivery and ride requests near you." />
+        <Empty icon="sleep" title="Offline" subtitle="Switch on to see pabili and pasugo requests near you." />
       )}
 
       {driver.history.length > 0 && (
@@ -91,7 +92,7 @@ export default function Driver() {
           <SectionTitle>Recent jobs</SectionTitle>
           {driver.history.slice(0, 10).map((j) => (
             <View key={j.id + j.completedAt} style={styles.hist}>
-              <MaterialCommunityIcons name={j.kind === 'food' ? 'food' : 'motorbike'} size={18} color={colors.muted} />
+              <MaterialCommunityIcons name={(j.kind === 'food' ? 'food' : CARGO[j.cargo ?? 'parcel'].icon) as any} size={18} color={colors.muted} />
               <Text style={{ flex: 1, marginLeft: 8, color: colors.text }} numberOfLines={1}>{j.dropoff.name}</Text>
               <Text style={{ fontWeight: '700', color: colors.text }}>{peso(j.payout)}</Text>
             </View>
