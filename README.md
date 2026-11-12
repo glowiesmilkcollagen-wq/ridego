@@ -84,6 +84,10 @@ New personal Play Console accounts must run a closed test with testers for 14 da
 - **Receipt photos**: let riders upload a photo of the store receipt so customers can verify the item cost.
 - **Rider verification** (license, OR/CR, NBI clearance) and **push notifications**.
 - **Places search**: replace the preset list in `src/lib/data.ts` with Google Places.
+- **Routing server**: distances, fees and route lines come from the free public OSRM demo server
+  (`ROUTING_URL` in `src/lib/routing.ts`, OpenStreetMap road data). It is meant for testing and has no traffic data.
+  Before launch, run your own OSRM server or switch to a paid routing API (e.g. Google Routes).
+  If the server can't be reached, the app falls back to an estimate and says so on screen.
 - **Legal**: carrying people on motorcycles for a fee (pasugo "Person") is regulated in the Philippines (LTFRB/DOTr motorcycle-taxi rules), and courier services may need permits — check before taking real passengers or parcels.
 
 ## Project layout

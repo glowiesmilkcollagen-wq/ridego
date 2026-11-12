@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import MapPreview from '@/components/MapPreview';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
-import { DriverJob, generateJobs, STAGE_STATUS, STAGES } from '@/lib/driver';
+import { DriverJob, generateJobs, STAGE_STATUS, STAGES, withRoadRoute } from '@/lib/driver';
 import { useStore } from '@/lib/store';
 import { CARGO } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
@@ -16,9 +16,19 @@ export default function Driver() {
   // While online and idle, refresh incoming requests every 15 seconds.
   useEffect(() => {
     if (!driver.online || driver.active) return;
-    setJobs(generateJobs(3));
-    const t = setInterval(() => setJobs(generateJobs(3)), 15000);
-    return () => clearInterval(t);
+    let live = true;
+    const refresh = () => {
+      const fresh = generateJobs(3);
+      setJobs(fresh);
+      // Swap in road distances and pay as they arrive.
+      Promise.all(fresh.map(withRoadRoute)).then((routed) => live && setJobs((cur) => (cur === fresh ? routed : cur)));
+    };
+    refresh();
+    const t = setInterval(refresh, 15000);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
   }, [driver.online, driver.active]);
 
   const today = new Date().toDateString();
@@ -125,7 +135,7 @@ function ActiveJob({ job, onNext, onNavigate, onCancel }: {
           { id: 'p', coord: job.pickup.location, kind: job.kind === 'pabili' ? 'store' : 'pickup' },
           { id: 'd', coord: job.dropoff.location, kind: 'dropoff' },
         ]}
-        route={[job.pickup.location, job.dropoff.location]}
+        path={job.path ?? [job.pickup.location, job.dropoff.location]}
       />
       <View style={{ padding: 16 }}>
         <Text style={{ color: colors.ride, fontWeight: '800' }}>{STAGE_STATUS[job.kind][job.stage]}</Text>

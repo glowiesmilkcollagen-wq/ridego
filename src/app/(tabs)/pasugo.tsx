@@ -7,8 +7,8 @@ import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import PaymentPicker from '@/components/PaymentPicker';
 import { Button, Card, SectionTitle } from '@/components/ui';
-import { roadKm } from '@/lib/geo';
 import { etaMinutes, pasugoFee, Vehicle, VEHICLES } from '@/lib/pricing';
+import { useRoute } from '@/lib/routing';
 import { useStore } from '@/lib/store';
 import { Cargo, CARGO } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
@@ -32,15 +32,16 @@ export default function Pasugo() {
     if (state.ready && !dropoff) setPasugoStop('dropoff', state.home);
   }, [state.ready, dropoff, state.home, setPasugoStop]);
 
-  const km = pickup && dropoff ? roadKm(pickup.location, dropoff.location) : 0;
+  const { route, loading } = useRoute(pickup?.location, dropoff?.location);
+  const km = route?.km ?? 0;
   const pins: MapPin[] = [
     ...(pickup ? [{ id: 'p', coord: pickup.location, kind: 'pickup' as const }] : []),
     ...(dropoff ? [{ id: 'd', coord: dropoff.location, kind: 'dropoff' as const }] : []),
   ];
-  const tooShort = !!pickup && !!dropoff && km < 0.3;
+  const tooShort = !!route && km < 0.3;
 
   const book = () => {
-    if (!pickup || !dropoff) return;
+    if (!pickup || !dropoff || !route) return;
     const missing = [
       !description.trim() && (person ? 'who the rider is picking up' : 'what the rider is picking up'),
       person && !senderPhone.trim() && "the passenger's mobile number",
@@ -50,7 +51,7 @@ export default function Pasugo() {
 
     const contact = (name: string, phone: string) => (name.trim() || phone.trim() ? { name: name.trim(), phone: phone.trim() } : undefined);
     const id = bookPasugo({
-      pickup, dropoff, vehicle, cargo, description: description.trim(),
+      pickup, dropoff, route, vehicle, cargo, description: description.trim(),
       sender: contact(senderName, senderPhone),
       receiver: receiveMyself ? undefined : contact(receiverName, receiverPhone),
     });
@@ -68,7 +69,7 @@ export default function Pasugo() {
               A rider picks up a folder, a bag, or even a person, and brings it to you or anywhere you choose.
             </Text>
           </View>
-          {pins.length > 1 && <MapPreview pins={pins} route={[pickup!.location, dropoff!.location]} height={190} />}
+          {pins.length > 1 && <MapPreview pins={pins} path={route?.path} height={190} />}
 
           <View style={{ padding: 16, gap: 14 }}>
             <View>
@@ -121,9 +122,14 @@ export default function Pasugo() {
               )}
             </Card>
 
-            {pickup && dropoff ? (
+            {pickup && dropoff && !route ? (
+              <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 12 }}>Calculating the road route…</Text>
+            ) : pickup && dropoff && route ? (
               <>
-                <Text style={{ color: colors.muted }}>{km.toFixed(1)} km · about {etaMinutes(km, vehicle)} min after pickup</Text>
+                <Text style={{ color: colors.muted }}>{route.estimated ? `about ${km.toFixed(1)} km (estimated)` : `${km.toFixed(1)} km by road`} · about {etaMinutes(km, vehicle)} min after pickup</Text>
+                {route.estimated && (
+                  <Text style={{ color: colors.warning, fontSize: 13 }}>Couldn't reach the map service, so this distance is estimated.</Text>
+                )}
                 {(Object.keys(VEHICLES) as Vehicle[]).map((k) => {
                   const t = VEHICLES[k];
                   const on = k === vehicle;

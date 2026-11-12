@@ -2,14 +2,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Store } from '@/lib/data';
-import { LatLng, roadKm } from '@/lib/geo';
 import { deliveryFee, etaMinutes } from '@/lib/pricing';
 import { colors, peso, radius } from '@/lib/theme';
 import { useStartErrand } from './useStartErrand';
 
-export default function StoreCard({ r, from, compact }: { r: Store; from: LatLng; compact?: boolean }) {
+/** `km` is the road distance from the store to the customer. */
+export default function StoreCard({ r, km, compact }: { r: Store; km: number; compact?: boolean }) {
   const start = useStartErrand();
-  const km = roadKm(r.location, from);
   const eta = r.waitMinutes + etaMinutes(km) + 5;
   return (
     <Pressable

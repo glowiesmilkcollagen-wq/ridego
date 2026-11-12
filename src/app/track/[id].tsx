@@ -42,7 +42,7 @@ export default function Track() {
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ title: pabili ? `Order ${trip.id}` : `Pasugo ${trip.id}` }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <MapPreview pins={pins} route={[trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.vehicle === 'car' ? 'car' : 'motorbike'} />
+        <MapPreview pins={pins} path={trip.path ?? [trip.pickup.location, trip.dropoff.location]} height={280} rideIcon={trip.vehicle === 'car' ? 'car' : 'motorbike'} />
 
         <View style={{ padding: 16, gap: 14 }}>
           <Card>

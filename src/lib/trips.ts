@@ -1,4 +1,4 @@
-import { LatLng, lerp } from './geo';
+import { LatLng, lerp, pointAlong } from './geo';
 import { Vehicle } from './pricing';
 
 export type Stop = { name: string; location: LatLng };
@@ -26,6 +26,9 @@ export type Trip = {
   pickup: Stop;
   dropoff: Stop;
   km: number;
+  /** Road route from pickup to drop-off; missing or two points when the distance was estimated. */
+  path?: LatLng[];
+  distanceEstimated?: boolean;
   rider: { name: string; plate: string; rating: number; start: LatLng };
   payment: PaymentMethod;
   lines: { label: string; amount: number }[];
@@ -108,12 +111,12 @@ export function getProgress(trip: Trip, now = Date.now()): Progress {
     if (key === 'searching') riderPos = null;
     else if (key === 'tostore') riderPos = lerp(start, p, t);
     else if (key === 'buying') riderPos = p;
-    else if (key === 'onway') riderPos = lerp(p, d, t);
+    else if (key === 'onway') riderPos = pointAlong(trip.path ?? [p, d], t);
     else riderPos = d;
   } else {
     if (key === 'searching') riderPos = null;
     else if (key === 'topickup') riderPos = lerp(start, p, t);
-    else if (key === 'intransit') riderPos = lerp(p, d, t);
+    else if (key === 'intransit') riderPos = pointAlong(trip.path ?? [p, d], t);
     else riderPos = d;
   }
 

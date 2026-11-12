@@ -42,3 +42,16 @@ export function regionFor(points: LatLng[]) {
     longitudeDelta: Math.max(0.01, (maxLng - minLng) * 1.8),
   };
 }
+
+/** The point a fraction `t` (0–1) of the way along a path, measured by distance. */
+export function pointAlong(path: LatLng[], t: number): LatLng {
+  if (path.length < 2) return path[0];
+  const k = Math.max(0, Math.min(1, t));
+  const seg = path.slice(1).map((p, i) => distanceKm(path[i], p));
+  let remaining = seg.reduce((s, d) => s + d, 0) * k;
+  for (let i = 0; i < seg.length; i++) {
+    if (remaining <= seg[i] || i === seg.length - 1) return lerp(path[i], path[i + 1], seg[i] ? remaining / seg[i] : 1);
+    remaining -= seg[i];
+  }
+  return path[path.length - 1];
+}

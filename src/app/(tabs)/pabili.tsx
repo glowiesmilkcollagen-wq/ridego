@@ -6,11 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
 import { Chip, Empty } from '@/components/ui';
 import { CATEGORIES, Category, STORES } from '@/lib/data';
+import { useStoreDistances } from '@/lib/routing';
 import { errandCount, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 export default function Pabili() {
   const { state } = useStore();
+  const kmFor = useStoreDistances(state.home.location);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Category | null>(null);
   const count = errandCount(state.errand);
@@ -60,7 +62,7 @@ export default function Pabili() {
             </ScrollView>
           </View>
         }
-        renderItem={({ item }) => <StoreCard r={item} from={state.home.location} />}
+        renderItem={({ item }) => <StoreCard r={item} km={kmFor(item.id)} />}
         ListEmptyComponent={<Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or use “Buy from any store”" />}
       />
       {count > 0 && state.errand.store && (

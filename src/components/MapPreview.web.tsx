@@ -5,8 +5,8 @@ import { regionFor } from '@/lib/geo';
 import { MapPreviewProps, PIN_STYLE } from './MapPreview.types';
 
 /** Web has no native map; this draws a schematic so the app can be previewed in a browser. */
-export default function MapPreview({ pins, route, height = 260, rideIcon = 'motorbike' }: MapPreviewProps) {
-  const r = regionFor([...pins.map((p) => p.coord), ...(route ?? [])]);
+export default function MapPreview({ pins, path, height = 260, rideIcon = 'motorbike' }: MapPreviewProps) {
+  const r = regionFor([...pins.map((p) => p.coord), ...(path ?? [])]);
   const pos = (c: { latitude: number; longitude: number }) => ({
     left: `${50 + ((c.longitude - r.longitude) / r.longitudeDelta) * 100}%` as const,
     top: `${50 - ((c.latitude - r.latitude) / r.latitudeDelta) * 100}%` as const,
@@ -18,6 +18,9 @@ export default function MapPreview({ pins, route, height = 260, rideIcon = 'moto
       ))}
       {[...Array(6)].map((_, i) => (
         <View key={`v${i}`} style={[styles.road, { left: `${i * 19 + 6}%`, top: 0, bottom: 0, width: i % 2 === 0 ? 6 : 2 }]} />
+      ))}
+      {path?.map((c, i) => (
+        <View key={`r${i}`} style={[styles.dot, pos(c)]} />
       ))}
       {pins.map((p) => {
         const s = PIN_STYLE[p.kind];
@@ -35,6 +38,7 @@ export default function MapPreview({ pins, route, height = 260, rideIcon = 'moto
 const styles = StyleSheet.create({
   map: { backgroundColor: '#E8EEF2', overflow: 'hidden' },
   road: { position: 'absolute', backgroundColor: '#fff' },
+  dot: { position: 'absolute', width: 4, height: 4, marginLeft: -2, marginTop: -2, borderRadius: 2, backgroundColor: '#E5195E' },
   pin: {
     position: 'absolute', width: 30, height: 30, marginLeft: -15, marginTop: -15, borderRadius: 15,
     alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff',

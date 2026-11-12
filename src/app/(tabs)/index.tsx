@@ -8,6 +8,7 @@ import TripCard from '@/components/TripCard';
 import { SectionTitle } from '@/components/ui';
 import { CATEGORIES, STORES } from '@/lib/data';
 import { getProgress } from '@/lib/trips';
+import { useStoreDistances } from '@/lib/routing';
 import { useNow, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
@@ -19,6 +20,7 @@ const TOP_PER_CATEGORY = CATEGORIES.flatMap((c) => {
 
 export default function Home() {
   const { state } = useStore();
+  const kmFor = useStoreDistances(state.home.location);
   const now = useNow(2000);
   const active = state.trips.filter((t) => {
     const p = getProgress(t, now);
@@ -72,7 +74,7 @@ export default function Home() {
         <SectionTitle style={{ marginTop: 20 }}>Pabili from places near you</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
           {TOP_PER_CATEGORY.map((r) => (
-            <StoreCard key={r.id} r={r} from={state.home.location} compact />
+            <StoreCard key={r.id} r={r} km={kmFor(r.id)} compact />
           ))}
         </ScrollView>
       </ScrollView>

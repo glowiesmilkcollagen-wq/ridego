@@ -1,5 +1,6 @@
 import { PLACES, STORES } from './data';
 import { LatLng, roadKm } from './geo';
+import { getRoute } from './routing';
 import { deliveryFee, pasugoFee, RIDER_SHARE } from './pricing';
 import { Cargo, CARGO } from './trips';
 
@@ -10,6 +11,8 @@ export type DriverJob = {
   pickup: { name: string; location: LatLng };
   dropoff: { name: string; location: LatLng };
   km: number;
+  /** Road route from pickup to drop-off, once loaded. */
+  path?: LatLng[];
   /** What the customer is charged by the app (delivery fee or ride fare). */
   fee: number;
   payout: number;
@@ -70,4 +73,12 @@ export function generateJobs(count = 4): DriverJob[] {
       detail: CARGO[cargo].label,
     };
   });
+}
+
+/** Replaces a job's estimated distance and pay with the real road route. */
+export async function withRoadRoute(job: DriverJob): Promise<DriverJob> {
+  const route = await getRoute(job.pickup.location, job.dropoff.location);
+  if (route.estimated) return job;
+  const fee = job.kind === 'pabili' ? deliveryFee(route.km) : pasugoFee(route.km, 'moto');
+  return { ...job, km: route.km, path: route.path, fee, payout: Math.round(fee * RIDER_SHARE) };
 }

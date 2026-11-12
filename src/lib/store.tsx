@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PLATES, RIDER_NAMES } from './data';
-import { DEFAULT_LOCATION, LatLng, offset, roadKm } from './geo';
+import { DEFAULT_LOCATION, LatLng, offset } from './geo';
+import { Route } from './routing';
 import { deliveryFee, pasugoFee, Vehicle, VEHICLES } from './pricing';
 import { Cargo, Contact, ErrandItem, PaymentMethod, Stop, Trip } from './trips';
 import { DriverJob } from './driver';
@@ -48,11 +49,8 @@ function makeRider(near: LatLng) {
   };
 }
 
-/** The delivery fee is the only amount the app computes for a buy-and-deliver order. */
-export function errandQuote(store: Stop, home: Stop) {
-  const km = roadKm(store.location, home.location);
-  return { km, fee: deliveryFee(km) };
-}
+/** The delivery fee is the only amount the app computes for a pabili order, from the road distance. */
+export const errandFee = (route: Route) => deliveryFee(route.km);
 
 export const errandCount = (e: Errand) => e.items.reduce((s, i) => s + i.qty, 0);
 
@@ -106,14 +104,15 @@ function useStoreValue() {
         })),
       clearErrand: () => update(() => ({ errand: EMPTY_ERRAND })),
 
-      placeErrand: (note: string, budget?: number): string | null => {
+      placeErrand: (route: Route, note: string, budget?: number): string | null => {
         const s = latest.current;
         const { store, items } = s.errand;
         if (!store || !items.length) return null;
-        const { km, fee } = errandQuote(store, s.home);
+        const { km } = route;
+        const fee = errandFee(route);
         const trip: Trip = {
           id: `F-${uid()}`, kind: 'pabili', createdAt: Date.now(),
-          pickup: store, dropoff: s.home, km, rider: makeRider(store.location),
+          pickup: store, dropoff: s.home, km, path: route.path, distanceEstimated: route.estimated, rider: makeRider(store.location),
           payment: s.payment, lines: [{ label: `Delivery fee (${km.toFixed(1)} km)`, amount: fee }], total: fee,
           items, note, budget,
         };
@@ -122,13 +121,14 @@ function useStoreValue() {
       },
 
       bookPasugo: (o: {
-        pickup: Stop; dropoff: Stop; vehicle: Vehicle; cargo: Cargo; description: string; sender?: Contact; receiver?: Contact;
+        pickup: Stop; dropoff: Stop; route: Route; vehicle: Vehicle; cargo: Cargo; description: string; sender?: Contact; receiver?: Contact;
       }): string => {
         const id = `P-${uid()}`;
-        const km = roadKm(o.pickup.location, o.dropoff.location);
+        const { km } = o.route;
         const fee = pasugoFee(km, o.vehicle);
         const trip: Trip = {
           id, kind: 'pasugo', createdAt: Date.now(), pickup: o.pickup, dropoff: o.dropoff, km,
+          path: o.route.path, distanceEstimated: o.route.estimated,
           vehicle: o.vehicle, cargo: o.cargo, description: o.description, sender: o.sender, receiver: o.receiver,
           rider: makeRider(o.pickup.location), payment: latest.current.payment,
           lines: [{ label: `${VEHICLES[o.vehicle].label} pasugo (${km.toFixed(1)} km)`, amount: fee }],

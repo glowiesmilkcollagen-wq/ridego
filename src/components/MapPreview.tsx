@@ -5,13 +5,15 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { regionFor } from '@/lib/geo';
 import { MapPreviewProps, PIN_STYLE } from './MapPreview.types';
 
-export default function MapPreview({ pins, route, height = 260, rideIcon = 'motorbike' }: MapPreviewProps) {
-  const points = [...pins.map((p) => p.coord), ...(route ?? [])];
+export default function MapPreview({ pins, path, height = 260, rideIcon = 'motorbike' }: MapPreviewProps) {
+  const points = [...pins.map((p) => p.coord), ...(path ?? [])];
   const region = regionFor(points.length ? points : pins.map((p) => p.coord));
   return (
     <View style={{ height }}>
       <MapView style={StyleSheet.absoluteFill} region={region} showsUserLocation={false} toolbarEnabled={false}>
-        {route && <Polyline coordinates={route} strokeColor="#E5195E" strokeWidth={4} lineDashPattern={[8, 6]} />}
+        {path && path.length > 1 && (
+          <Polyline coordinates={path} strokeColor="#E5195E" strokeWidth={5} lineDashPattern={path.length === 2 ? [8, 6] : undefined} />
+        )}
         {pins.map((p) => {
           const s = PIN_STYLE[p.kind];
           const icon = p.kind === 'rider' ? rideIcon : s.icon;

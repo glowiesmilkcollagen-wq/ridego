@@ -7,7 +7,8 @@ import PaymentPicker from '@/components/PaymentPicker';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
 import { CATEGORIES, DEFAULT_ITEM_EXAMPLE, STORES } from '@/lib/data';
 import { etaMinutes } from '@/lib/pricing';
-import { errandQuote, useStore } from '@/lib/store';
+import { useRoute } from '@/lib/routing';
+import { errandFee, useStore } from '@/lib/store';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Order() {
@@ -17,6 +18,7 @@ export default function Order() {
   const [note, setNote] = useState('');
   const [budget, setBudget] = useState('');
   const { store, storeId, items } = state.errand;
+  const { route, loading } = useRoute(store?.location, state.home.location);
 
   if (!store) {
     return (
@@ -28,7 +30,8 @@ export default function Order() {
 
   const known = storeId ? STORES.find((r) => r.id === storeId) : undefined;
   const suggestions = (known?.favorites ?? []).filter((f) => !items.some((i) => i.name.toLowerCase() === f.toLowerCase()));
-  const { km, fee } = errandQuote(store, state.home);
+  const km = route?.km ?? 0;
+  const fee = route ? errandFee(route) : 0;
   const eta = (known?.waitMinutes ?? 15) + etaMinutes(km) + 5;
   const example = CATEGORIES.find((c) => c.key === known?.category)?.example ?? DEFAULT_ITEM_EXAMPLE;
   const pharmacy = known?.category === 'Medicine' || /pharma|drug|botika|parmasya/i.test(store.name);
@@ -39,7 +42,8 @@ export default function Order() {
     setDraft('');
   };
   const place = () => {
-    const id = placeErrand(note.trim(), budgetValue);
+    if (!route) return;
+    const id = placeErrand(route, note.trim(), budgetValue);
     if (id) router.replace(`/track/${id}`);
   };
 
@@ -133,7 +137,7 @@ export default function Order() {
             </View>
             <Pressable onPress={() => router.push('/place-search?target=home')}><Text style={styles.link}>Change</Text></Pressable>
           </View>
-          <Text style={{ color: colors.muted, marginTop: 10 }}>Estimated arrival: about {eta}–{eta + 15} min</Text>
+          {route && <Text style={{ color: colors.muted, marginTop: 10 }}>Estimated arrival: about {eta}–{eta + 15} min</Text>}
         </Card>
 
         <Card>
@@ -142,7 +146,12 @@ export default function Order() {
         </Card>
 
         <Card>
-          <Row label={`Delivery fee (${km.toFixed(1)} km)`} value={peso(fee)} bold />
+          {route ? (
+            <Row label={`Delivery fee (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(fee)} bold />
+          ) : (
+            <Row label="Delivery fee" value="Calculating route…" bold />
+          )}
+          {route?.estimated && <Text style={styles.warn}>Couldn't reach the map service, so this distance is estimated.</Text>}
           <Row label="Items" value="Pay rider as per receipt" />
           {budgetValue ? <Row label="Item spending limit" value={peso(budgetValue)} /> : null}
           <View style={styles.info}>
@@ -154,7 +163,10 @@ export default function Order() {
         </Card>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
-        <Button title={items.length ? `Find a rider · ${peso(fee)} delivery` : 'Add at least one item'} onPress={place} disabled={!items.length} />
+        <Button
+          title={!items.length ? 'Add at least one item' : loading ? 'Calculating route…' : `Find a rider · ${peso(fee)} delivery`}
+          onPress={place} disabled={!items.length || !route}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -173,5 +185,6 @@ const styles = StyleSheet.create({
   label: { color: colors.muted, marginTop: 14, marginBottom: 6 },
   budget: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12 },
   info: { flexDirection: 'row', backgroundColor: colors.bg, borderRadius: radius.md, padding: 12, marginTop: 10 },
+  warn: { color: colors.warning, marginTop: 4, fontSize: 13 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
 });
