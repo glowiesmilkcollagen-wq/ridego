@@ -84,7 +84,7 @@ export default function Jobs() {
                   {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}{o.vehicle === 'car' ? ' · car' : ''}
                 </Text>
                 <Text style={[styles.line, { color: colors.muted }]}>
-                  Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · your {percent(Number(o.rider_share))} share {peso(Number(o.rider_earning))}
+                  Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · {o.commission_waived ? 'beta: you keep 100%, no commission' : `your ${percent(Number(o.rider_share))} share ${peso(Number(o.rider_earning))}`}
                 </Text>
                 <Button title="Accept" color={colors.ride} style={{ marginTop: 10 }} loading={busy === o.id} onPress={() => run(o.id, () => acceptOrder(o.id))} />
               </Card>

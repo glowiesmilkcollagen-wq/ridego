@@ -31,9 +31,11 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
 - **Stores** (add/edit/hide suggested stores) · **Fees & commission** (rider share and every price, with preview) · **Promotions** (promo codes).
 
 ### Money rules
-- **Riders keep 80% of every fee** (change it in Admin → Fees & commission). The share is saved on each order, so changes only affect new orders.
+- **Normal rules:** riders keep **70%** of each delivery/pasugo fee; RideGo keeps 30% plus a **₱15 booking fee** that customers pay on every order.
+- **Beta waiver (on now):** no booking fee and no commission — riders keep **100%**. Switch it off in Admin → Fees & commission to start the normal rules.
+- The share and booking fee are saved on each order, so changes only affect new orders.
 - Fees are calculated **on the server** from distance and the admin's prices — the apps can't change them.
-- Promo discounts come out of RideGo's 20%; riders still earn 80% of the full fee.
+- Promo discounts come out of RideGo's part; riders still earn their share of the full fee.
 - Cash: the rider collects the fee, keeps their share, and owes RideGo the rest until the admin records a remittance.
 
 ## 1. Connect the database (once)
@@ -98,7 +100,7 @@ app.config.ts       picks the customer, rider or admin app
 
 ### Database tests
 `supabase/tests/rules_test.sql` checks the security rules and money logic as customers, riders and an admin
-(e.g. riders can't approve themselves, customers can't change fees, only one rider gets a job, 80% share, promos, balances).
+(e.g. riders can't approve themselves, customers can't change fees, only one rider gets a job, shares, booking fee, beta waiver, promos, balances).
 Run against any Postgres 15+: `npm run test:db -- "-h localhost -U postgres"`.
 
 ## Still to do before a public launch

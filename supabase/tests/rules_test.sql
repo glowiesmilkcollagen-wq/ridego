@@ -10,6 +10,8 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000a2', 'car@example.com',   '{"full_name":"Carlo Lim"}'),
   ('00000000-0000-0000-0000-0000000000ad', 'admin@example.com', '{"full_name":"Boss"}');
 update public.profiles set role = 'admin' where id = '00000000-0000-0000-0000-0000000000ad';
+-- Most checks below use an 80% share with no booking fee and no beta waiver; section 16 covers the waiver and booking fee.
+update public.settings set rider_share = 0.8, booking_fee = 0, beta_waiver = false;
 
 create temp table ctx (k text primary key, v text);
 grant all on ctx to authenticated;
@@ -168,6 +170,26 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 insert into ctx select 'o4', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
 select pg_temp.check((select fee || '/' || rider_earning from orders where id = (select v::uuid from ctx where k = 'o4')) = '113/85', 'new prices: 59+54=113, 75% = 85');
 select pg_temp.check((select rider_earning from orders where id = (select v::uuid from ctx where k = 'o1')) = 82, 'old orders keep their original share');
+
+\echo '16. booking fee goes to the company; the beta waiver drops it and the commission'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+update settings set rider_share = 0.7, booking_fee = 15, beta_waiver = false;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+insert into ctx select 'o5', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
+select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o5')) = '113/15/128/79/false',
+  'normal: fee 113 + booking 15 = 128 paid; rider gets 70% of 113 = 79');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+update settings set beta_waiver = true;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+insert into ctx select 'o6', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
+select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_share || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o6')) = '113/0/113/1/113/true',
+  'beta: no booking fee, rider keeps 100% of 113');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select accept_order((select v::uuid from ctx where k = 'o6'));
+select advance_order((select v::uuid from ctx where k = 'o6'));
+select advance_order((select v::uuid from ctx where k = 'o6'), 200);
+select advance_order((select v::uuid from ctx where k = 'o6'));
+select pg_temp.check(rider_balance(auth.uid()) = 0, 'beta cash job: rider keeps everything, owes nothing');
 
 \echo '15. anonymous visitors see nothing'
 reset role;

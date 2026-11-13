@@ -8,7 +8,8 @@ import PromoField, { AppliedPromo } from '@/components/PromoField';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
 import { placeOrder, usePrices, useStores } from '@/lib/api';
 import { CATEGORIES, DEFAULT_ITEM_EXAMPLE } from '@/lib/data';
-import { deliveryFee, etaMinutes } from '@/lib/pricing';
+import BookingFeeRow from '@/components/BookingFeeRow';
+import { currentBookingFee, deliveryFee, etaMinutes } from '@/lib/pricing';
 import { useRoute } from '@/lib/routing';
 import { useStore } from '@/lib/store';
 import { errorText } from '@/lib/supabase';
@@ -39,7 +40,8 @@ export default function Order() {
   const suggestions = (known?.favorites ?? []).filter((f) => !items.some((i) => i.name.toLowerCase() === f.toLowerCase()));
   const km = route?.km ?? 0;
   const baseFee = route ? deliveryFee(km, prices) : 0;
-  const fee = Math.max(0, baseFee - (promo?.discount ?? 0));
+  // What the customer pays the app: the fee after any promo, plus the booking fee (₱0 during the beta).
+  const fee = Math.max(0, baseFee - (promo?.discount ?? 0)) + currentBookingFee(prices);
   const eta = (known?.waitMinutes ?? 15) + etaMinutes(km) + 5;
   const example = CATEGORIES.find((c) => c.key === known?.category)?.example ?? DEFAULT_ITEM_EXAMPLE;
   const pharmacy = known?.category === 'Medicine' || /pharma|drug|botika|parmasya/i.test(store.name);
@@ -169,6 +171,7 @@ export default function Order() {
             <>
               <Row label={`Delivery fee (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(baseFee)} />
               {promo ? <Row label={`Promo ${promo.code}`} value={`−${peso(promo.discount)}`} valueColor={colors.ride} /> : null}
+              <BookingFeeRow prices={prices} />
               <Row label="You pay for delivery" value={peso(fee)} bold />
             </>
           ) : (
@@ -188,7 +191,7 @@ export default function Order() {
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
         <Button
-          title={!items.length ? 'Add at least one item' : loading ? 'Calculating route…' : `Find a rider · ${peso(fee)} delivery`}
+          title={!items.length ? 'Add at least one item' : loading ? 'Calculating route…' : `Find a rider · ${peso(fee)}`}
           onPress={place} loading={placing} disabled={!items.length || !route}
         />
       </View>

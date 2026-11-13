@@ -137,6 +137,9 @@ function Summary({ o }: { o: Order }) {
       <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
       <Row label={`${pabili ? 'Delivery fee' : 'Pasugo fee'} (${Number(o.km).toFixed(1)} km)`} value={peso(Number(o.base_fee))} />
       {Number(o.discount) > 0 && <Row label={`Promo ${o.promo_code}`} value={`−${peso(Number(o.discount))}`} valueColor={colors.ride} />}
+      {Number(o.booking_fee) > 0
+        ? <Row label="Booking fee" value={peso(Number(o.booking_fee))} />
+        : o.commission_waived ? <Row label="Booking fee" value="Waived (beta)" valueColor={colors.ride} /> : null}
       {pabili && <Row label="Items" value={receipt != null ? `${peso(receipt)} (receipt)` : 'Pay rider as per receipt'} />}
       {o.budget ? <Row label="Item spending limit" value={peso(Number(o.budget))} /> : null}
       <Row

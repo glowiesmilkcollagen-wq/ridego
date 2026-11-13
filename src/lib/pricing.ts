@@ -7,7 +7,12 @@ export const VEHICLES: Record<Vehicle, { label: string; icon: string; blurb: str
 
 /** Prices and commission, as stored in the `settings` table and edited in the admin dashboard. */
 export type Prices = {
+  /** Riders' share of the delivery/pasugo fee when the beta waiver is off (e.g. 0.7). */
   rider_share: number;
+  /** Fixed fee added to every order for the company (waived during the beta). */
+  booking_fee: number;
+  /** Beta: no booking fee and no commission — riders keep 100% of the fee. */
+  beta_waiver: boolean;
   pabili_base: number;
   pabili_base_km: number;
   pabili_per_km: number;
@@ -23,7 +28,9 @@ export type Prices = {
 
 /** Same defaults as supabase/schema.sql; used until the settings row has loaded. */
 export const DEFAULT_PRICES: Prices = {
-  rider_share: 0.8,
+  rider_share: 0.7,
+  booking_fee: 15,
+  beta_waiver: true,
   pabili_base: 49, pabili_base_km: 2, pabili_per_km: 10,
   moto_base: 40, moto_per_km: 10, moto_per_min: 1, moto_min: 50,
   car_base: 90, car_per_km: 18, car_per_min: 2, car_min: 140,
@@ -52,3 +59,19 @@ export function pasugoFee(km: number, vehicle: Vehicle, p: Prices = DEFAULT_PRIC
 }
 
 export const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+/** The rider's share that applies to new orders right now (100% during the beta waiver). */
+export const currentShare = (p: Prices) => (p.beta_waiver ? 1 : p.rider_share);
+/** The booking fee that applies to new orders right now (₱0 during the beta waiver). */
+export const currentBookingFee = (p: Prices) => (p.beta_waiver ? 0 : p.booking_fee);
+
+/** Reads the `settings` row (numeric columns may arrive as strings). */
+export function parsePrices(row: Record<string, unknown> | null): Prices {
+  if (!row) return DEFAULT_PRICES;
+  const out = { ...DEFAULT_PRICES } as Record<string, unknown>;
+  for (const k of Object.keys(DEFAULT_PRICES)) {
+    if (row[k] === undefined || row[k] === null) continue;
+    out[k] = k === 'beta_waiver' ? Boolean(row[k]) : Number(row[k]);
+  }
+  return out as Prices;
+}

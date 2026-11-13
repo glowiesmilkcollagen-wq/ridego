@@ -76,7 +76,7 @@ function Details({ o }: { o: Order }) {
       {line('Pickup contact', o.sender ? `${o.sender.name} ${o.sender.phone}` : null)}
       {line('Receiver', o.receiver ? `${o.receiver.name} ${o.receiver.phone}` : null)}
       {line('Instructions', o.note)}
-      {line('Fee', `${peso(Number(o.base_fee))}${Number(o.discount) ? ` − ${peso(Number(o.discount))} (${o.promo_code})` : ''} = ${peso(Number(o.fee))} · ${o.payment}`)}
+      {line('Customer paid', `${peso(Number(o.base_fee))} fee${Number(o.discount) ? ` − ${peso(Number(o.discount))} (${o.promo_code})` : ''}${Number(o.booking_fee) ? ` + ${peso(Number(o.booking_fee))} booking` : ''} = ${peso(Number(o.fee))} · ${o.payment}${o.commission_waived ? ' · beta waiver' : ''}`)}
       {line('Rider earning', `${peso(Number(o.rider_earning))} (${Math.round(Number(o.rider_share) * 100)}%)`)}
       {line('Receipt', o.receipt_amount != null ? peso(Number(o.receipt_amount)) : null)}
       {line('Rating', o.rating ? `${o.rating} ★` : null)}

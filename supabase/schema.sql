@@ -62,7 +62,9 @@ create table if not exists public.stores (
 -- One row of prices and commission, edited from the admin dashboard.
 create table if not exists public.settings (
   id int primary key default 1 check (id = 1),
-  rider_share numeric not null default 0.8 check (rider_share between 0 and 1),
+  rider_share numeric not null default 0.7 check (rider_share between 0 and 1),
+  booking_fee numeric not null default 15 check (booking_fee >= 0),  -- added to every order; goes to the company
+  beta_waiver boolean not null default true,                           -- beta: no booking fee and no commission (riders keep 100%)
   pabili_base numeric not null default 49,
   pabili_base_km numeric not null default 2,
   pabili_per_km numeric not null default 10,
@@ -76,6 +78,10 @@ create table if not exists public.settings (
   car_min numeric not null default 140,
   updated_at timestamptz not null default now()
 );
+-- Columns added after the first release (no-ops on a fresh database).
+alter table public.settings add column if not exists booking_fee numeric not null default 15 check (booking_fee >= 0);
+alter table public.settings add column if not exists beta_waiver boolean not null default true;
+alter table public.settings alter column rider_share set default 0.7;
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 create table if not exists public.promotions (
@@ -113,10 +119,12 @@ create table if not exists public.orders (
   vehicle text not null default 'moto' check (vehicle in ('moto', 'car')),
   base_fee numeric not null,
   discount numeric not null default 0,
-  fee numeric not null,               -- what the customer pays (base_fee - discount)
+  booking_fee numeric not null default 0,   -- company's fixed fee on this order (0 while the beta waiver is on)
+  fee numeric not null,               -- what the customer pays the app: base_fee - discount + booking_fee
   promo_code text,
-  rider_share numeric not null,       -- share at the time of the order, e.g. 0.8
+  rider_share numeric not null,       -- share of base_fee at the time of the order, e.g. 0.7 (1 during the beta waiver)
   rider_earning numeric not null,     -- rider's money for this order (from base_fee; promos are paid by the company)
+  commission_waived boolean not null default false,  -- placed while the beta waiver was on
   payment public.payment_method not null default 'cash',
   -- pabili
   items jsonb,
@@ -138,6 +146,8 @@ create table if not exists public.orders (
   cancelled_at timestamptz,
   cancelled_by text
 );
+alter table public.orders add column if not exists booking_fee numeric not null default 0;
+alter table public.orders add column if not exists commission_waived boolean not null default false;
 create index if not exists orders_customer_idx on public.orders (customer_id, created_at desc);
 create index if not exists orders_rider_idx on public.orders (rider_id, created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
@@ -259,7 +269,9 @@ declare
   base numeric;
   disc numeric := 0;
   promo text := nullif(upper(trim(coalesce(p ->> 'promo_code', ''))), '');
+  s public.settings;
   share numeric;
+  booking numeric;
   o public.orders;
 begin
   select * into me from public.profiles where id = auth.uid();
@@ -279,15 +291,19 @@ begin
   if promo is not null then
     select pd.discount into disc from public.promo_discount(promo, k, base) pd;
   end if;
-  select rider_share into share from public.settings where id = 1;
+  select * into s from public.settings where id = 1;
+  -- Beta waiver: no booking fee and no commission, so the rider keeps the whole delivery/pasugo fee.
+  share := case when s.beta_waiver then 1 else s.rider_share end;
+  booking := case when s.beta_waiver then 0 else s.booking_fee end;
 
   insert into public.orders (
     kind, customer_id, customer_name, pickup_name, pickup_lat, pickup_lng, dropoff_name, dropoff_lat, dropoff_lng,
-    km, path, vehicle, base_fee, discount, fee, promo_code, rider_share, rider_earning, payment,
+    km, path, vehicle, base_fee, discount, booking_fee, fee, promo_code, rider_share, rider_earning, commission_waived, payment,
     items, note, budget, store_id, cargo, description, sender, receiver
   ) values (
     k, me.id, split_part(me.full_name, ' ', 1), p -> 'pickup' ->> 'name', plat, plng, p -> 'dropoff' ->> 'name', dlat, dlng,
-    dist, p -> 'path', veh, base, disc, base - disc, promo, share, round(base * share), coalesce((p ->> 'payment')::public.payment_method, 'cash'),
+    dist, p -> 'path', veh, base, disc, booking, base - disc + booking, promo, share, round(base * share), s.beta_waiver,
+    coalesce((p ->> 'payment')::public.payment_method, 'cash'),
     p -> 'items', p ->> 'note', (p ->> 'budget')::numeric, (p ->> 'store_id')::uuid, p ->> 'cargo', p ->> 'description', p -> 'sender', p -> 'receiver'
   ) returning * into o;
   return o;

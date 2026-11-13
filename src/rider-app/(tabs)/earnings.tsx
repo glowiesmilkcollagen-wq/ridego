@@ -19,7 +19,8 @@ export default function Earnings() {
   const [period, setPeriod] = useState<Period>('today');
   const jobs = deliveredSince(orders.data ?? [], period);
   const t = summarize(jobs);
-  const share = jobs[0] ? percent(Number(jobs[0].rider_share)) : 'your';
+  const shares = [...new Set(jobs.map((j) => Number(j.rider_share)))];
+  const share = shares.length === 1 ? percent(shares[0]) : 'your share';
   const balance = money.data?.balance ?? 0;
 
   const days = new Map<string, Order[]>();

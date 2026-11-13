@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Category, Store } from './data';
 import type { LatLng } from './geo';
-import { DEFAULT_PRICES, Prices, Vehicle } from './pricing';
+import { DEFAULT_PRICES, parsePrices, Prices, Vehicle } from './pricing';
 import { supabase, supabaseConfigured } from './supabase';
 import type { Cargo, Contact, ErrandItem, PaymentMethod, Stop } from './trips';
 
@@ -22,8 +22,8 @@ export type Order = {
   pickup_name: string; pickup_lat: number; pickup_lng: number;
   dropoff_name: string; dropoff_lat: number; dropoff_lng: number;
   km: number; path: LatLng[] | null; vehicle: Vehicle;
-  base_fee: number; discount: number; fee: number; promo_code: string | null;
-  rider_share: number; rider_earning: number; payment: PaymentMethod;
+  base_fee: number; discount: number; booking_fee: number; fee: number; promo_code: string | null;
+  rider_share: number; rider_earning: number; commission_waived: boolean; payment: PaymentMethod;
   items: ErrandItem[] | null; note: string | null; budget: number | null; receipt_amount: number | null; store_id: string | null;
   cargo: Cargo | null; description: string | null; sender: Contact | null; receiver: Contact | null;
   rating: number | null;
@@ -150,9 +150,7 @@ export function useStores() {
 export function usePrices(): Prices {
   const live = useLive<Prices>(
     async () => {
-      const row = must(await supabase.from('settings').select('*').eq('id', 1).maybeSingle()) as Record<string, unknown> | null;
-      if (!row) return DEFAULT_PRICES;
-      return Object.fromEntries(Object.keys(DEFAULT_PRICES).map((k) => [k, Number(row[k])])) as Prices;
+      return parsePrices(must(await supabase.from('settings').select('*').eq('id', 1).maybeSingle()) as Record<string, unknown> | null);
     },
     [],
     { pollMs: 5 * 60_000 },

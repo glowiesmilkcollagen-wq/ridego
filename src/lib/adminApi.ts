@@ -1,5 +1,5 @@
 import { must, Order, Profile, Promotion, Rider, RiderStatus, RiderTransaction, StoreRow, useLive } from './api';
-import { DEFAULT_PRICES, Prices } from './pricing';
+import { parsePrices, Prices } from './pricing';
 import { supabase } from './supabase';
 
 /** Admin-only data access. The database lets these through only for profiles with role 'admin'. */
@@ -42,8 +42,7 @@ export async function deleteStore(id: string) {
 
 export async function loadSettings(): Promise<Prices & { updated_at?: string }> {
   const row = must(await supabase.from('settings').select('*').eq('id', 1).maybeSingle()) as Record<string, unknown> | null;
-  if (!row) return DEFAULT_PRICES;
-  return { ...(Object.fromEntries(Object.keys(DEFAULT_PRICES).map((k) => [k, Number(row[k])])) as Prices), updated_at: String(row.updated_at) };
+  return { ...parsePrices(row), updated_at: row ? String(row.updated_at) : undefined };
 }
 export async function saveSettings(p: Prices) {
   must(await supabase.from('settings').update({ ...p, updated_at: new Date().toISOString() }).eq('id', 1));

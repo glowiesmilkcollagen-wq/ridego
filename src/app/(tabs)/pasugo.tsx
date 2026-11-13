@@ -10,7 +10,8 @@ import PromoField, { AppliedPromo } from '@/components/PromoField';
 import { placeOrder, usePrices } from '@/lib/api';
 import { errorText } from '@/lib/supabase';
 import { Button, Card, SectionTitle } from '@/components/ui';
-import { etaMinutes, pasugoFee, Vehicle, VEHICLES } from '@/lib/pricing';
+import BookingFeeRow from '@/components/BookingFeeRow';
+import { currentBookingFee, etaMinutes, pasugoFee, Vehicle, VEHICLES } from '@/lib/pricing';
 import { useRoute } from '@/lib/routing';
 import { useStore } from '@/lib/store';
 import { Cargo, CARGO } from '@/lib/trips';
@@ -46,7 +47,7 @@ export default function Pasugo() {
   ];
   const tooShort = !!route && km < 0.3;
   const baseFee = route ? pasugoFee(km, vehicle, prices) : 0;
-  const fee = Math.max(0, baseFee - (promo?.discount ?? 0));
+  const fee = Math.max(0, baseFee - (promo?.discount ?? 0)) + currentBookingFee(prices);
   // A promo's discount depends on the fee, so re-check it when the trip or vehicle changes.
   useEffect(() => setPromo(null), [vehicle, km]);
 
@@ -175,6 +176,7 @@ export default function Pasugo() {
                 </Card>
 
                 <PromoField kind="pasugo" baseFee={baseFee} value={promo} onChange={setPromo} />
+                {prices.booking_fee > 0 && <View style={{ paddingHorizontal: 4 }}><BookingFeeRow prices={prices} /></View>}
 
                 {person && vehicle === 'moto' && (
                   <View style={styles.safety}>

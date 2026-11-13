@@ -16,6 +16,7 @@ function totals(orders: Order[]) {
   return {
     orders: orders.length, delivered: done.length, cancelled: orders.filter((o) => o.status === 'cancelled').length,
     fees, riders, commission: fees - riders, discounts: done.reduce((s, o) => s + n(o.discount), 0),
+    booking: done.reduce((s, o) => s + n(o.booking_fee), 0), waived: done.filter((o) => o.commission_waived).length,
     pabili: done.filter((o) => o.kind === 'pabili').length, pasugo: done.filter((o) => o.kind === 'pasugo').length,
   };
 }
@@ -52,7 +53,7 @@ export default function Overview() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         <StatCard label="Fees paid by customers" value={peso(t.fees)} />
         <StatCard label="Rider earnings" value={peso(t.riders)} />
-        <StatCard label="Company commission" value={peso(t.commission)} tone="good" />
+        <StatCard label="Company commission" value={peso(t.commission)} tone="good" hint={`incl. ${peso(t.booking)} booking fees${t.waived ? ` · ${t.waived} beta order${t.waived > 1 ? 's' : ''} waived` : ''}`} />
         <StatCard label="Promo discounts given" value={peso(t.discounts)} />
       </View>
 
