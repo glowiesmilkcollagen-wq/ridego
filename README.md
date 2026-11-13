@@ -38,6 +38,9 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
 
 ## 1. Connect the database (once)
 
+> **Already done for RideGo:** the project `euzgazzfrytlihcnkmek` (Singapore) has the schema, security rules and starter stores
+> loaded, email confirmation is off, and `.env` points the apps at it. The steps below are for setting up a new project.
+
 1. Create a free project at [supabase.com](https://supabase.com) (region: Southeast Asia / Singapore).
 2. **SQL Editor → New query**: paste all of [`supabase/schema.sql`](supabase/schema.sql) → **Run**. Then do the same with [`supabase/seed.sql`](supabase/seed.sql) (starter stores).
 3. **Authentication → Sign In / Providers → Email**: turn off **Confirm email** (or keep it on and confirm by email).
