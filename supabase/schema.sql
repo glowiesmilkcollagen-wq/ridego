@@ -154,18 +154,23 @@ create table if not exists public.rider_transactions (
 );
 
 -- ───────────────────────────── Helpers ─────────────────────────────
-create or replace function public.is_admin() returns boolean
+-- Internal helpers live in the `private` schema, which the Data API does not expose: the security rules can use
+-- them, but apps cannot call them directly.
+create schema if not exists private;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
 $$;
 
-create or replace function public.my_rider() returns public.riders
+create or replace function private.my_rider() returns public.riders
 language sql stable security definer set search_path = public as $$
   select * from public.riders where id = auth.uid();
 $$;
 
 create or replace function public.km_between(lat1 double precision, lng1 double precision, lat2 double precision, lng2 double precision)
-returns numeric language sql immutable as $$
+returns numeric language sql immutable set search_path = '' as $$
   select (2 * 6371 * asin(sqrt(
     power(sin(radians(lat2 - lat1) / 2), 2) +
     cos(radians(lat1)) * cos(radians(lat2)) * power(sin(radians(lng2 - lng1) / 2), 2)
@@ -228,9 +233,9 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
 
 -- Only admins (or RideGo's own functions) may change someone's role.
 create or replace function public.protect_role() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 begin
-  if new.role is distinct from old.role and current_user in ('authenticated', 'anon') and not public.is_admin() then
+  if new.role is distinct from old.role and current_user in ('authenticated', 'anon') and not private.is_admin() then
     raise exception 'You cannot change your role';
   end if;
   return new;
@@ -294,14 +299,14 @@ declare o public.orders;
 begin
   select * into o from public.orders where id = p_id for update;
   if not found then raise exception 'Order not found'; end if;
-  if public.is_admin() then
+  if private.is_admin() then
     if o.status in ('delivered', 'cancelled') then raise exception 'This order is already finished'; end if;
   elsif o.customer_id = auth.uid() then
     if o.status not in ('searching', 'accepted') then raise exception 'The rider has already started — this order can no longer be cancelled'; end if;
   else
     raise exception 'Not your order';
   end if;
-  update public.orders set status = 'cancelled', cancelled_at = now(), cancelled_by = case when public.is_admin() then 'admin' else 'customer' end
+  update public.orders set status = 'cancelled', cancelled_at = now(), cancelled_by = case when private.is_admin() then 'admin' else 'customer' end
   where id = p_id returning * into o;
   return o;
 end $$;
@@ -354,7 +359,7 @@ $$;
 create or replace function public.accept_order(p_id uuid) returns public.orders
 language plpgsql security definer set search_path = public as $$
 declare
-  r public.riders := public.my_rider();
+  r public.riders := private.my_rider();
   o public.orders;
 begin
   if r.id is null or r.status <> 'approved' then raise exception 'Your rider account is not approved yet'; end if;
@@ -408,7 +413,7 @@ language sql stable security definer set search_path = public as $$
                    from public.orders where rider_id = p_rider and status = 'delivered'), 0)
        - coalesce((select sum(amount) from public.rider_transactions where rider_id = p_rider and type = 'remittance'), 0)
        + coalesce((select sum(amount) from public.rider_transactions where rider_id = p_rider and type = 'payout'), 0)
-  where p_rider = auth.uid() or public.is_admin();
+  where p_rider = auth.uid() or private.is_admin();
 $$;
 
 -- ───────────────────────────── Row-level security ─────────────────────────────
@@ -427,13 +432,13 @@ do $$ declare pol record; begin
 end $$;
 
 -- Admins can do everything.
-create policy admin_all on public.profiles for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.riders for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.stores for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.settings for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.promotions for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.orders for all using (public.is_admin()) with check (public.is_admin());
-create policy admin_all on public.rider_transactions for all using (public.is_admin()) with check (public.is_admin());
+create policy admin_all on public.profiles for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.riders for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.stores for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.settings for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.promotions for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.orders for all using (private.is_admin()) with check (private.is_admin());
+create policy admin_all on public.rider_transactions for all using (private.is_admin()) with check (private.is_admin());
 
 -- Profiles: yourself, plus the other person on an order you share (customer ↔ rider).
 create policy own_profile on public.profiles for select using (id = auth.uid());
@@ -459,7 +464,7 @@ create policy customer_orders on public.orders for select using (customer_id = a
 create policy rider_orders on public.orders for select using (rider_id = auth.uid());
 create policy open_jobs on public.orders for select using (
   status = 'searching' and exists (
-    select 1 from public.my_rider() r where r.status = 'approved' and r.online and (r.vehicle = orders.vehicle or orders.kind = 'pabili')
+    select 1 from private.my_rider() r where r.status = 'approved' and r.online and (r.vehicle = orders.vehicle or orders.kind = 'pabili')
   )
 );
 
@@ -471,6 +476,15 @@ revoke all on all tables in schema public from anon;
 revoke all on all functions in schema public from anon, public;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant execute on all functions in schema public to authenticated;
+revoke all on all functions in schema private from anon, public;
+grant execute on all functions in schema private to authenticated;
+-- Used only inside the database (triggers, and fee calculation inside place_order), never called by apps.
+revoke execute on function public.handle_new_user() from authenticated;
+revoke execute on function public.protect_role() from authenticated;
+revoke execute on function public.compute_fee(public.order_kind, numeric, text) from authenticated;
+-- Earlier versions kept these helpers in public; remove them (the policies above now use private.*).
+drop function if exists public.is_admin();
+drop function if exists public.my_rider();
 
 -- Live updates for tracking and new jobs.
 do $$ begin
