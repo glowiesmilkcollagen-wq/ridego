@@ -585,3 +585,18 @@ do $$ begin
     begin alter publication supabase_realtime add table public.riders; exception when duplicate_object then null; end;
   end if;
 end $$;
+
+-- ============================================================================
+-- Route cache (used only by the `route` Edge Function with the secret key).
+-- RLS on with no policies: the apps can't read or write it directly.
+-- ============================================================================
+create table if not exists public.route_cache (
+  key text primary key,
+  km double precision not null,
+  path jsonb,
+  source text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.route_cache enable row level security;
+revoke all on public.route_cache from anon, authenticated;
+create index if not exists route_cache_created_idx on public.route_cache (created_at);

@@ -88,6 +88,20 @@ Stores: Google Play Console (US$25 once) and Apple Developer Program (US$99/year
 Before store builds, replace `REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_KEY` in `app.json` with a Google Maps SDK for Android key,
 or maps are blank on Android. iOS uses Apple Maps (no key).
 
+## 4. Google Maps
+
+Two separate keys from [Google Cloud Console](https://console.cloud.google.com) (billing must be on; Google gives a free monthly allowance):
+
+| Key | Used for | Where it goes | Restrict to |
+|---|---|---|---|
+| **Server key** | road distances, route lines, fees (**Routes API**) | Supabase → **Edge Functions → Secrets** as `GOOGLE_MAPS_API_KEY` — never in the apps | API: Routes API |
+| **Android key** | showing maps on Android (**Maps SDK for Android**) | `app.json` → `androidGoogleMapsApiKey` (it is public by design) | API: Maps SDK for Android; Android apps `com.ajaridego.ridego` and `com.ajaridego.ridego.rider` + their SHA-1 from `npx eas-cli@latest credentials` |
+
+How routing works: the apps call the `route` Edge Function ([`supabase/functions/route`](supabase/functions/route/index.ts)).
+It uses Google (motorcycle routes, car roads if none) when the secret is set, otherwise the free OSRM server, and caches
+answers for 30 days in `route_cache` so the same trip doesn't cost twice. Only signed-in users can call it, and only for points in the Philippines.
+If the function can't be reached, the apps fall back to OSRM, then to a straight-line estimate. No app update is needed when you add the key.
+
 ## Project layout
 
 ```
@@ -96,7 +110,7 @@ src/rider-app/      rider app screens
 src/admin-app/      admin dashboard screens
 src/lib/            shared: api.ts (database), adminApi.ts, pricing, routing, auth, local drafts
 src/components/     shared UI (admin/ and rider/ have app-specific parts)
-supabase/           schema.sql (tables, security rules, server functions), seed.sql, tests/
+supabase/           schema.sql (tables, security rules, server functions), seed.sql, tests/, functions/route (Google routing)
 app.config.ts       picks the customer, rider or admin app
 ```
 
@@ -110,5 +124,5 @@ Run against any Postgres 15+: `npm run test:db -- "-h localhost -U postgres"`.
 - **Phone-number (SMS) login** instead of email — needs an SMS provider in Supabase (e.g. Twilio).
 - **Push notifications** for new jobs and order updates; **background location** for riders (today the rider app must stay open).
 - **Receipt and prescription photos**; **rider document uploads** (license, OR/CR) for approval.
-- **Routing**: distances use the free OSRM demo server (`src/lib/routing.ts`); use your own server or a paid API in production.
+- **Routing**: add the Google server key (section 4); until then distances use the free OSRM demo server.
 - **Legal**: motorcycle passenger transport (pasugo "Person") and courier services are regulated in the Philippines (LTFRB/DOTr) — get permits first.

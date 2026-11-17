@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { Store } from './data';
 import { LatLng, roadKm } from './geo';
+import { supabase, supabaseConfigured } from './supabase';
 
 /**
- * Road routing via OSRM (OpenStreetMap data). The public demo server is free and needs no key, but it is
- * meant for testing: before launch, point this at your own OSRM server or switch to a paid routing API.
+ * Road routing. The apps ask the `route` Edge Function (supabase/functions/route), which uses Google's Routes API
+ * once the GOOGLE_MAPS_API_KEY secret is set on Supabase (the key never ships in the apps) and caches answers.
+ * If that can't be reached (offline, signed out), the apps ask the free OSRM demo server directly, and failing
+ * that use a straight-line estimate.
  */
 export const ROUTING_URL = 'https://router.project-osrm.org';
 
@@ -35,6 +38,22 @@ async function fetchJson(url: string, ms = 8000) {
   }
 }
 
+type FnPoint = [number, number];
+const fnPt = (p: LatLng): FnPoint => [p.latitude, p.longitude];
+
+/** Calls the `route` Edge Function; throws on any failure so callers can fall back. */
+async function callRouteFn<T>(body: object, ms = 10000): Promise<T> {
+  if (!supabaseConfigured) throw new Error('not configured');
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) throw new Error('signed out');
+  const res = await Promise.race([
+    supabase.functions.invoke('route', { body }),
+    new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+  ]);
+  if (res.error || !res.data || (res.data as { error?: string }).error) throw res.error ?? new Error('route failed');
+  return res.data as T;
+}
+
 /** Keeps at most `max` evenly spaced points (always including both ends) so trips stay small when saved. */
 function thin(path: LatLng[], max = MAX_PATH_POINTS) {
   if (path.length <= max) return path;
@@ -58,12 +77,18 @@ export function getRouteVia(points: LatLng[]): Promise<Route> {
   const key = points.map(pt).join(';');
   let p = routeCache.get(key);
   if (!p) {
-    p = fetchJson(`${ROUTING_URL}/route/v1/driving/${key}?overview=full&geometries=geojson`)
-      .then((json): Route => {
-        const r = json.routes[0];
-        const path = (r.geometry.coordinates as [number, number][]).map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
-        return { km: r.distance / 1000, path: thin(path), estimated: false };
+    p = callRouteFn<{ km: number; path: FnPoint[] }>({ op: 'route', points: points.map(fnPt) })
+      .then((r): Route => {
+        const path = r.path.map(([latitude, longitude]) => ({ latitude, longitude }));
+        return { km: r.km, path: path.length >= 2 ? thin(path) : points, estimated: false };
       })
+      .catch(() =>
+        fetchJson(`${ROUTING_URL}/route/v1/driving/${key}?overview=full&geometries=geojson`).then((json): Route => {
+          const r = json.routes[0];
+          const path = (r.geometry.coordinates as [number, number][]).map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+          return { km: r.distance / 1000, path: thin(path), estimated: false };
+        }),
+      )
       .catch(() => {
         routeCache.delete(key);
         return estimateRouteVia(points);
@@ -80,15 +105,20 @@ export function getStoreDistances(stores: Store[], dest: LatLng): Promise<Record
   if (!p) {
     const coords = [...stores.map((s) => pt(s.location)), pt(dest)].join(';');
     const sources = stores.map((_, i) => i).join(';');
-    p = fetchJson(`${ROUTING_URL}/table/v1/driving/${coords}?sources=${sources}&destinations=${stores.length}&annotations=distance`)
-      .then((json) => {
-        const out: Record<string, number> = {};
-        stores.forEach((s, i) => {
-          const m = json.distances?.[i]?.[0];
-          if (typeof m === 'number') out[s.id] = m / 1000;
-        });
-        return out;
-      })
+    const toMap = (kms: (number | null | undefined)[]) => {
+      const out: Record<string, number> = {};
+      stores.forEach((s, i) => {
+        if (typeof kms[i] === 'number') out[s.id] = kms[i] as number;
+      });
+      return out;
+    };
+    p = callRouteFn<{ km: (number | null)[] }>({ op: 'matrix', origins: stores.map((s) => fnPt(s.location)), dest: fnPt(dest) })
+      .then((r) => toMap(r.km))
+      .catch(() =>
+        fetchJson(`${ROUTING_URL}/table/v1/driving/${coords}?sources=${sources}&destinations=${stores.length}&annotations=distance`).then(
+          (json) => toMap(stores.map((_, i) => (typeof json.distances?.[i]?.[0] === 'number' ? json.distances[i][0] / 1000 : null))),
+        ),
+      )
       .catch(() => {
         tableCache.delete(key);
         return {};
