@@ -42,8 +42,8 @@ function Gate() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="order" options={{ title: 'What to buy' }} />
       <Stack.Screen name="track/[id]" options={{ title: 'Tracking' }} />
-      <Stack.Screen name="place-search" options={{ title: 'Choose location', presentation: 'modal' }} />
-      <Stack.Screen name="store-picker" options={{ title: 'Add another store', presentation: 'modal' }} />
+      <Stack.Screen name="place-search" options={{ title: 'Choose location' }} />
+      <Stack.Screen name="store-picker" options={{ title: 'Add another store' }} />
       <Stack.Screen name="custom-store" options={{ title: 'Store not on the list' }} />
     </Stack>
   );
