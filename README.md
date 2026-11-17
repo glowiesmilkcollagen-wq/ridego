@@ -85,8 +85,8 @@ The `.env` values are built into the apps, so build after creating `.env`.
 Stores: Google Play Console (US$25 once) and Apple Developer Program (US$99/year); customer and rider apps are separate listings
 (`com.ajaridego.ridego` and `com.ajaridego.ridego.rider` — these IDs can't change after the first upload).
 
-Before store builds, replace `REPLACE_WITH_YOUR_GOOGLE_MAPS_ANDROID_KEY` in `app.json` with a Google Maps SDK for Android key,
-or maps are blank on Android. iOS uses Apple Maps (no key).
+Android maps use the Google Maps SDK for Android key in `app.json` (`androidGoogleMapsApiKey`, restricted to that API).
+iOS uses Apple Maps (no key). Maps only change in a new build, not in Expo Go.
 
 ## 4. Google Maps
 
