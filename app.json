@@ -10,7 +10,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ajaridego.ridego",
-      "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "RideGo uses your location to set your pickup point and delivery address.",
         "ITSAppUsesNonExemptEncryption": false
@@ -18,7 +17,6 @@
     },
     "android": {
       "package": "com.ajaridego.ridego",
-      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
