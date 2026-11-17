@@ -80,6 +80,8 @@ create table if not exists public.settings (
   updated_at timestamptz not null default now()
 );
 -- Columns added after the first release (no-ops on a fresh database).
+-- Motorcycles only: any rider registered with a car becomes a motorcycle rider.
+update public.riders set vehicle = 'moto' where vehicle <> 'moto';
 alter table public.settings add column if not exists booking_fee numeric not null default 15 check (booking_fee >= 0);
 alter table public.settings add column if not exists beta_waiver boolean not null default true;
 alter table public.settings alter column rider_share set default 0.7;
@@ -310,7 +312,8 @@ begin
   if plat is null or plng is null or dlat is null or dlng is null then raise exception 'Pickup and drop-off are required'; end if;
   if k = 'pabili' and jsonb_array_length(coalesce(p -> 'items', '[]'::jsonb)) = 0 then raise exception 'Add at least one item to buy'; end if;
   if k = 'pasugo' and coalesce(trim(p ->> 'description'), '') = '' then raise exception 'Describe what the rider will pick up'; end if;
-  if veh not in ('moto', 'car') or (k = 'pabili' and veh <> 'moto') then veh := 'moto'; end if;
+  -- RideGo uses motorcycles only (the vehicle column stays for older orders).
+  veh := 'moto';
 
   -- The road distance comes from the app's routing; keep it within sane bounds of the straight-line distance.
   if stops is not null then
@@ -389,11 +392,11 @@ returns public.riders language plpgsql security definer set search_path = public
 declare r public.riders;
 begin
   if auth.uid() is null then raise exception 'Please log in first'; end if;
-  if p_vehicle not in ('moto', 'car') then raise exception 'Choose motorcycle or car'; end if;
   if coalesce(trim(p_plate), '') = '' or coalesce(trim(p_license_no), '') = '' then raise exception 'Plate and license number are required'; end if;
   update public.profiles set full_name = trim(p_full_name), phone = trim(p_phone),
     role = case when role = 'admin' then role else 'rider' end where id = auth.uid();
-  insert into public.riders (id, vehicle, plate, license_no) values (auth.uid(), p_vehicle, upper(trim(p_plate)), upper(trim(p_license_no)))
+  -- Motorcycle riders only; p_vehicle is kept so older apps can still call this.
+  insert into public.riders (id, vehicle, plate, license_no) values (auth.uid(), 'moto', upper(trim(p_plate)), upper(trim(p_license_no)))
   on conflict (id) do update set vehicle = excluded.vehicle, plate = excluded.plate, license_no = excluded.license_no
   returning * into r;
   return r;

@@ -85,21 +85,16 @@ export default function Fees() {
           {f('pabili_per_store', 'Per store (₱)', 'Charged for each store, including the first.')}
         </View>
       </Panel>
-      <Panel title="Pasugo — motorcycle">
+      <Panel title="Pasugo (motorcycle)">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {f('moto_base', 'Base (₱)')}{f('moto_per_km', 'Per km (₱)')}{f('moto_per_min', 'Per minute (₱)', 'Estimated at 24 km/h')}{f('moto_min', 'Minimum (₱)')}
         </View>
       </Panel>
-      <Panel title="Pasugo — car">
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {f('car_base', 'Base (₱)')}{f('car_per_km', 'Per km (₱)')}{f('car_per_min', 'Per minute (₱)', 'Estimated at 16 km/h')}{f('car_min', 'Minimum (₱)')}
-        </View>
-      </Panel>
-      <Panel title={`Preview — pasugo by motorcycle, ${form.beta_waiver ? 'beta waiver ON' : 'beta waiver OFF'}`}>
+      <Panel title={`Preview — pasugo, ${form.beta_waiver ? 'beta waiver ON' : 'beta waiver OFF'}`}>
         <Table
           head={['Distance', 'Fee', 'Booking fee', 'Customer pays', 'Rider gets', 'RideGo keeps']}
           rows={[2, 5, 8, 12].map((km) => {
-            const fee = pasugoFee(km, 'moto', p);
+            const fee = pasugoFee(km, p);
             const rider = Math.round(fee * share);
             return [`${km} km`, peso(fee), peso(booking), peso(fee + booking), peso(rider), peso(fee + booking - rider)];
           })}

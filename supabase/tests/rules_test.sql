@@ -136,11 +136,13 @@ select pg_temp.check((select base_fee || '/' || discount || '/' || fee || '/' ||
 select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"x","promo_code":"WELCOME50"}')$$, 'already used');
 select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"x","promo_code":"NOPE"}')$$, 'not found');
 
-\echo '12. car-only pasugo goes to car riders; a rider can drop a job before arriving'
+\echo '12. motorcycles only: a car request is booked as motorcycle; a rider can drop a job before arriving'
 insert into ctx select 'o3', (place_order('{"kind":"pasugo","vehicle":"car","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"Big box"}')).id;
+select pg_temp.check((select vehicle from orders where id = (select v::uuid from ctx where k = 'o3')) = 'moto', 'car request stored as motorcycle');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+select pg_temp.check((select count(*) from riders where vehicle = 'car') = 0 and (select count(*) from riders) = 2, 'a rider who asked for car is registered as motorcycle');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-select pg_temp.check((select count(*) from orders where id = (select v::uuid from ctx where k = 'o3')) = 0, 'moto rider does not see car job');
-select pg_temp.expect_error($$select accept_order((select v::uuid from ctx where k = 'o3'))$$, 'already taken or cancelled');
+select pg_temp.check((select count(*) from orders where id = (select v::uuid from ctx where k = 'o3')) = 1, 'every online rider sees the job');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a2');
 select accept_order((select v::uuid from ctx where k = 'o3'));
 select release_order((select v::uuid from ctx where k = 'o3'));

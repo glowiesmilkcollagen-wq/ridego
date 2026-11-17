@@ -7,7 +7,7 @@ import { Button, Card, Row, SectionTitle } from '@/components/ui';
 import { signOut, useRiderOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { deliveredSince, summarize } from '@/lib/driver';
-import { VEHICLES } from '@/lib/pricing';
+import { VEHICLE_LABEL } from '@/lib/pricing';
 import { colors, peso } from '@/lib/theme';
 
 export default function Profile() {
@@ -32,7 +32,7 @@ export default function Profile() {
               <View style={styles.avatar}><Text style={{ color: '#fff', fontWeight: '800', fontSize: 22 }}>{name[0]?.toUpperCase()}</Text></View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={{ fontWeight: '800', fontSize: 18, color: colors.text }}>{name}</Text>
-                <Text style={{ color: colors.muted }}>{rider ? `${VEHICLES[rider.vehicle].label} · ${rider.plate}` : ''}</Text>
+                <Text style={{ color: colors.muted }}>{rider ? `${VEHICLE_LABEL} · ${rider.plate}` : ''}</Text>
                 <Text style={{ color: colors.muted }}>{profile?.phone} · {session?.user.email}</Text>
               </View>
               <Pressable onPress={() => setEditing(true)}><Text style={{ color: colors.ride, fontWeight: '700' }}>Edit</Text></Pressable>

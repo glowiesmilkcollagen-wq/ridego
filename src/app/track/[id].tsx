@@ -6,7 +6,7 @@ import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
 import { cancelOrder, isOpen, Order, rateOrder, stopsOf, useOrder } from '@/lib/api';
-import { VEHICLES } from '@/lib/pricing';
+import { VEHICLE_LABEL } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
 import { canCustomerCancel, CARGO, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
@@ -57,7 +57,7 @@ export default function Track() {
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}` }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon={o.vehicle === 'car' ? 'car' : 'motorbike'} />
+        <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon="motorbike" />
 
         <View style={{ padding: 16, gap: 14 }}>
           <Card>
@@ -76,11 +76,11 @@ export default function Track() {
           {o.rider_id && o.status !== 'cancelled' && (
             <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.avatar, { backgroundColor: pabili ? colors.primarySoft : colors.rideSoft }]}>
-                <MaterialCommunityIcons name={o.vehicle === 'car' ? 'car' : 'motorbike'} size={26} color={accent} />
+                <MaterialCommunityIcons name="motorbike" size={26} color={accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{riderProfile?.full_name || 'Your rider'}</Text>
-                <Text style={{ color: colors.muted }}>{[rider ? VEHICLES[rider.vehicle].label : null, rider?.plate].filter(Boolean).join(' · ') || 'Rider details'}</Text>
+                <Text style={{ color: colors.muted }}>{[rider ? VEHICLE_LABEL : null, rider?.plate].filter(Boolean).join(' · ') || 'Rider details'}</Text>
               </View>
               {live && phone ? (
                 <>
@@ -142,7 +142,7 @@ function Summary({ o }: { o: Order }) {
             {o.description ? <Text style={{ color: colors.text }}>{o.description}</Text> : null}
             {o.sender ? <Row label={o.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(o.sender)} /> : null}
             <Row label="Received by" value={o.receiver ? contactText(o.receiver) : 'You'} />
-            <Row label="Vehicle" value={VEHICLES[o.vehicle].label} />
+            <Row label="Vehicle" value={VEHICLE_LABEL} />
           </View>
         )}
       <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />

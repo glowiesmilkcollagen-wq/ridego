@@ -11,7 +11,7 @@ import { placeOrder, usePrices } from '@/lib/api';
 import { errorText } from '@/lib/supabase';
 import { Button, Card, SectionTitle } from '@/components/ui';
 import BookingFeeRow from '@/components/BookingFeeRow';
-import { currentBookingFee, etaMinutes, pasugoFee, Vehicle, VEHICLES } from '@/lib/pricing';
+import { currentBookingFee, etaMinutes, pasugoFee } from '@/lib/pricing';
 import { useRoute } from '@/lib/routing';
 import { useStore } from '@/lib/store';
 import { Cargo, CARGO } from '@/lib/trips';
@@ -23,7 +23,6 @@ export default function Pasugo() {
   const [promo, setPromo] = useState<AppliedPromo>(null);
   const [booking, setBooking] = useState(false);
   const [cargo, setCargo] = useState<Cargo>('document');
-  const [vehicle, setVehicle] = useState<Vehicle>('moto');
   const [description, setDescription] = useState('');
   const [senderName, setSenderName] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
@@ -46,10 +45,10 @@ export default function Pasugo() {
     ...(dropoff ? [{ id: 'd', coord: dropoff.location, kind: 'dropoff' as const }] : []),
   ];
   const tooShort = !!route && km < 0.3;
-  const baseFee = route ? pasugoFee(km, vehicle, prices) : 0;
+  const baseFee = route ? pasugoFee(km, prices) : 0;
   const fee = Math.max(0, baseFee - (promo?.discount ?? 0)) + currentBookingFee(prices);
-  // A promo's discount depends on the fee, so re-check it when the trip or vehicle changes.
-  useEffect(() => setPromo(null), [vehicle, km]);
+  // A promo's discount depends on the fee, so re-check it when the trip changes.
+  useEffect(() => setPromo(null), [km]);
 
   const book = async () => {
     if (!pickup || !dropoff || !route || booking) return;
@@ -64,7 +63,7 @@ export default function Pasugo() {
     setBooking(true);
     try {
       const o = await placeOrder({
-        kind: 'pasugo', pickup, dropoff, km: route.km, path: route.estimated ? null : route.path, vehicle, cargo,
+        kind: 'pasugo', pickup, dropoff, km: route.km, path: route.estimated ? null : route.path, vehicle: 'moto', cargo,
         description: description.trim(), payment: paymentFor(state.payment), promo_code: promo?.code,
         sender: contact(senderName, senderPhone),
         receiver: receiveMyself ? undefined : contact(receiverName, receiverPhone),
@@ -147,24 +146,18 @@ export default function Pasugo() {
               <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 12 }}>Calculating the road route…</Text>
             ) : pickup && dropoff && route ? (
               <>
-                <Text style={{ color: colors.muted }}>{route.estimated ? `about ${km.toFixed(1)} km (estimated)` : `${km.toFixed(1)} km by road`} · about {etaMinutes(km, vehicle)} min after pickup</Text>
+                <Text style={{ color: colors.muted }}>{route.estimated ? `about ${km.toFixed(1)} km (estimated)` : `${km.toFixed(1)} km by road`} · about {etaMinutes(km)} min after pickup</Text>
                 {route.estimated && (
                   <Text style={{ color: colors.warning, fontSize: 13 }}>Couldn't reach the map service, so this distance is estimated.</Text>
                 )}
-                {(Object.keys(VEHICLES) as Vehicle[]).map((k) => {
-                  const t = VEHICLES[k];
-                  const on = k === vehicle;
-                  return (
-                    <Pressable key={k} onPress={() => setVehicle(k)} style={[styles.option, on && { borderColor: colors.ride, backgroundColor: colors.rideSoft }]}>
-                      <MaterialCommunityIcons name={t.icon as any} size={34} color={colors.text} />
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{t.label}</Text>
-                        <Text style={{ color: colors.muted, marginTop: 2 }}>{t.blurb}</Text>
-                      </View>
-                      <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{peso(pasugoFee(km, k, prices))}</Text>
-                    </Pressable>
-                  );
-                })}
+                <View style={[styles.option, { borderColor: colors.ride, backgroundColor: colors.rideSoft }]}>
+                  <MaterialCommunityIcons name="motorbike" size={34} color={colors.text} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>Motorcycle</Text>
+                    <Text style={{ color: colors.muted, marginTop: 2 }}>Documents, bags, or 1 person</Text>
+                  </View>
+                  <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{peso(pasugoFee(km, prices))}</Text>
+                </View>
 
                 <Card style={{ paddingVertical: 8 }}>
                   <Pressable onPress={() => setShowPay((v) => !v)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
@@ -178,7 +171,7 @@ export default function Pasugo() {
                 <PromoField kind="pasugo" baseFee={baseFee} value={promo} onChange={setPromo} />
                 {prices.booking_fee > 0 && <View style={{ paddingHorizontal: 4 }}><BookingFeeRow prices={prices} /></View>}
 
-                {person && vehicle === 'moto' && (
+                {person && (
                   <View style={styles.safety}>
                     <MaterialCommunityIcons name="racing-helmet" size={20} color={colors.ride} />
                     <Text style={{ marginLeft: 8, flex: 1, color: colors.text }}>The rider brings a spare helmet for your passenger.</Text>

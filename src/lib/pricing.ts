@@ -1,9 +1,6 @@
-export type Vehicle = 'moto' | 'car';
-
-export const VEHICLES: Record<Vehicle, { label: string; icon: string; blurb: string }> = {
-  moto: { label: 'Motorcycle', icon: 'motorbike', blurb: 'Documents, small bags, or 1 person' },
-  car: { label: 'Car', icon: 'car', blurb: 'Bigger items, or up to 4 people' },
-};
+/** RideGo uses motorcycles only. */
+export type Vehicle = 'moto';
+export const VEHICLE_LABEL = 'Motorcycle';
 
 /** Prices and commission, as stored in the `settings` table and edited in the admin dashboard. */
 export type Prices = {
@@ -22,10 +19,6 @@ export type Prices = {
   moto_per_km: number;
   moto_per_min: number;
   moto_min: number;
-  car_base: number;
-  car_per_km: number;
-  car_per_min: number;
-  car_min: number;
 };
 
 /** Same defaults as supabase/schema.sql; used until the settings row has loaded. */
@@ -35,14 +28,13 @@ export const DEFAULT_PRICES: Prices = {
   beta_waiver: true,
   pabili_base: 49, pabili_base_km: 2, pabili_per_km: 10, pabili_per_store: 20,
   moto_base: 40, moto_per_km: 10, moto_per_min: 1, moto_min: 50,
-  car_base: 90, car_per_km: 18, car_per_min: 2, car_min: 140,
 };
 
-/** Average city speed in km/h by vehicle, used for ETA estimates (and the per-minute part of the pasugo fee). */
-const SPEED: Record<Vehicle, number> = { moto: 24, car: 16 };
+/** Average motorcycle speed in the city (km/h), used for ETA estimates and the per-minute part of the pasugo fee. */
+const SPEED = 24;
 
-export function etaMinutes(km: number, vehicle: Vehicle = 'moto') {
-  return Math.max(3, Math.round((km / SPEED[vehicle]) * 60));
+export function etaMinutes(km: number) {
+  return Math.max(3, Math.round((km / SPEED) * 60));
 }
 
 /**
@@ -57,11 +49,9 @@ export const distanceFee = (km: number, p: Prices = DEFAULT_PRICES) => Math.roun
 /** The per-store part of the pabili fee (₱20 per store by default, including the first). */
 export const storesFee = (stores: number, p: Prices = DEFAULT_PRICES) => Math.max(1, stores) * p.pabili_per_store;
 
-/** Pasugo fee by vehicle; mirrors public.compute_fee on the server. */
-export function pasugoFee(km: number, vehicle: Vehicle, p: Prices = DEFAULT_PRICES) {
-  const [base, perKm, perMin, min] =
-    vehicle === 'car' ? [p.car_base, p.car_per_km, p.car_per_min, p.car_min] : [p.moto_base, p.moto_per_km, p.moto_per_min, p.moto_min];
-  return Math.round(Math.max(min, base + perKm * km + perMin * etaMinutes(km, vehicle)));
+/** Pasugo fee (motorcycle); mirrors public.compute_fee on the server. */
+export function pasugoFee(km: number, p: Prices = DEFAULT_PRICES) {
+  return Math.round(Math.max(p.moto_min, p.moto_base + p.moto_per_km * km + p.moto_per_min * etaMinutes(km)));
 }
 
 export const percent = (share: number) => `${Math.round(share * 100)}%`;

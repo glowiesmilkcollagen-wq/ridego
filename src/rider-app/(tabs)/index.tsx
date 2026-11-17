@@ -84,7 +84,7 @@ export default function Jobs() {
                 {o.store_count > 1 ? <Text style={[styles.line, { color: colors.primary, fontWeight: '700' }]}>{o.store_count} stores — buy at each, then deliver</Text> : null}
                 {o.description ? <Text style={styles.line}>{CARGO[o.cargo ?? 'parcel'].emoji} {o.description}</Text> : null}
                 <Text style={[styles.line, { color: colors.muted }]}>
-                  {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}{o.vehicle === 'car' ? ' · car' : ''}
+                  {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}
                 </Text>
                 <Text style={[styles.line, { color: colors.muted }]}>
                   Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · {o.commission_waived ? 'beta: you keep 100%, no commission' : `your ${percent(Number(o.rider_share))} share ${peso(Number(o.rider_earning))}`}

@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { Badge, confirmAction, notify, Page, Panel, Segmented, SmallButton, Table } from '@/components/admin/ui';
 import { RiderWithProfile, setRiderStatus, useRiders } from '@/lib/adminApi';
 import { RiderStatus } from '@/lib/api';
-import { VEHICLES } from '@/lib/pricing';
+import { VEHICLE_LABEL } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
@@ -44,7 +44,7 @@ export default function Riders() {
           rows={list.map((r) => [
             r.profile?.full_name || '—',
             r.profile?.phone || '—',
-            VEHICLES[r.vehicle].label,
+            VEHICLE_LABEL,
             r.plate,
             r.license_no,
             tab === 'approved'
