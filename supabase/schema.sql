@@ -327,7 +327,11 @@ begin
   end if;
   if dist is null or dist < straight then dist := straight * 1.3; end if;
   dist := round(least(dist, straight * 4 + 2), 2);
-  if dist < 0.3 then raise exception 'Pickup and drop-off are too close'; end if;
+  -- A pasugo needs real distance; a pabili store can be right next to the customer (e.g. a sari-sari store next door).
+  if dist < 0.3 then
+    if k = 'pasugo' then raise exception 'Pickup and drop-off are too close'; end if;
+    dist := 0.3;
+  end if;
 
   base := public.compute_fee(k, dist, veh, n_stores);
   if promo is not null then

@@ -202,6 +202,13 @@ select pg_temp.expect_error($$select place_order('{"kind":"pabili","dropoff":{"n
 select pg_temp.expect_error($$select place_order(jsonb_build_object('kind','pabili','dropoff',jsonb_build_object('name','H','lat',14.58,'lng',121.06),'km',8,
   'stops',(select jsonb_agg(jsonb_build_object('name','S'||i,'lat',14.55,'lng',121.02,'items',jsonb_build_array(jsonb_build_object('id','x','name','x','qty',1)))) from generate_series(1,6) i)))$$, 'at most 5 stores');
 
+\echo '18. a pabili store right next to the customer is fine; a pasugo that short is not'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+insert into ctx select 'o8', (place_order('{"kind":"pabili","dropoff":{"name":"Home","lat":14.5547,"lng":121.0244},"km":0,
+  "stops":[{"name":"Aling Nena sari-sari — green gate","lat":14.5547,"lng":121.0244,"items":[{"id":"a","name":"Coke","qty":1}]}]}')).id;
+select pg_temp.check((select km from orders where id = (select v::uuid from ctx where k = 'o8')) = 0.3, 'next-door store: distance floored at 0.3 km');
+select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5547,"lng":121.0244},"dropoff":{"name":"b","lat":14.5547,"lng":121.0244},"km":0,"description":"x"}')$$, 'too close');
+
 \echo '15. anonymous visitors see nothing'
 reset role;
 set role anon;

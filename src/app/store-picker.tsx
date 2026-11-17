@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import TypeStoreRow from '@/components/TypeStoreRow';
 import { usePrices, useStores } from '@/lib/api';
 import { PLACES } from '@/lib/data';
 import { hasStore, MAX_STORES, useStore } from '@/lib/store';
@@ -68,6 +69,7 @@ export default function StorePicker() {
         <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
         <TextInput autoFocus value={q} onChangeText={setQ} placeholder="Search stores, pharmacies, items…" placeholderTextColor={colors.muted} style={styles.input} />
       </View>
+      <TypeStoreRow q={q} mode="add" />
       <Pressable style={styles.item} onPress={useCurrent}>
         {locating ? <ActivityIndicator color={colors.primary} /> : <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />}
         <Text style={[styles.name, { color: colors.primary, marginLeft: 12 }]}>A store at my current location</Text>

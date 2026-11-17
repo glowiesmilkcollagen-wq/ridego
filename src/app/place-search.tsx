@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import TypeStoreRow from '@/components/TypeStoreRow';
 import { useStartErrand } from '@/components/useStartErrand';
 import { PLACES } from '@/lib/data';
 import { Stop } from '@/lib/trips';
@@ -61,6 +62,7 @@ export default function PlaceSearch() {
           style={styles.input}
         />
       </View>
+      {target === 'store' && <TypeStoreRow q={q} mode="start" />}
       <Pressable style={styles.item} onPress={useCurrent}>
         {locating ? <ActivityIndicator color={colors.primary} /> : <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />}
         <Text style={[styles.name, { color: colors.primary, marginLeft: 12 }]}>Use my current location</Text>

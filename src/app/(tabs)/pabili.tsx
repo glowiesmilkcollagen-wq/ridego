@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
+import TypeStoreRow from '@/components/TypeStoreRow';
 import { Chip, Empty } from '@/components/ui';
 import { useStores } from '@/lib/api';
 import { CATEGORIES, Category } from '@/lib/data';
@@ -62,10 +63,11 @@ export default function Pabili() {
                 <Chip key={c.key} label={c.key} icon={c.emoji} active={cat === c.key} onPress={() => setCat(cat === c.key ? null : c.key)} />
               ))}
             </ScrollView>
+            {q.trim() ? <TypeStoreRow q={q} mode="start" card /> : null}
           </View>
         }
         renderItem={({ item }) => <StoreCard r={item} km={kmFor(item)} />}
-        ListEmptyComponent={loading ? undefined : <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or use “Buy from any store”" />}
+        ListEmptyComponent={loading ? undefined : <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or ask the rider to buy from the store you typed (above)" />}
       />
       {state.errand.stops.length > 0 && (
         <Pressable style={styles.cartBar} onPress={() => router.push('/order')}>
