@@ -7,7 +7,11 @@ import { ErrandItem, PaymentMethod, Stop } from './trips';
  * What is kept only on this phone: the customer's drafts and preferences. Orders, profiles and riders live in
  * the Supabase database (see api.ts).
  */
-type Errand = { store: Stop | null; storeId: string | null; items: ErrandItem[] };
+/** One store in a pabili draft, with its own shopping list. `key` identifies it within the draft. */
+export type ErrandStop = { key: string; store: Stop; storeId: string | null; items: ErrandItem[] };
+/** The pabili draft: the stores in visiting order. */
+type Errand = { stops: ErrandStop[] };
+export const MAX_STORES = 5;
 type State = {
   ready: boolean;
   home: Stop;
@@ -16,7 +20,7 @@ type State = {
   pasugoDraft: { pickup: Stop | null; dropoff: Stop | null };
 };
 
-const EMPTY_ERRAND: Errand = { store: null, storeId: null, items: [] };
+const EMPTY_ERRAND: Errand = { stops: [] };
 const INITIAL: State = {
   ready: false,
   home: { name: 'Ayala Triangle, Makati', location: DEFAULT_LOCATION },
@@ -25,10 +29,14 @@ const INITIAL: State = {
   pasugoDraft: { pickup: null, dropoff: null },
 };
 
-const KEY = 'ridego-local-v1';
+// v2: the pabili draft holds several stores.
+const KEY = 'ridego-local-v2';
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export const errandCount = (e: Errand) => e.items.reduce((s, i) => s + i.qty, 0);
+export const errandCount = (e: Errand) => e.stops.reduce((s, st) => s + st.items.reduce((n, i) => n + i.qty, 0), 0);
+/** Whether a store is already in the draft (matched by store id, or by name for places outside the store list). */
+export const hasStore = (e: Errand, store: Stop, storeId: string | null) =>
+  e.stops.some((st) => (storeId ? st.storeId === storeId : !st.storeId && st.store.name === store.name));
 
 function useStoreValue() {
   const [state, setState] = useState<State>(INITIAL);
@@ -57,21 +65,39 @@ function useStoreValue() {
       swapPasugoStops: () => update((s) => ({ pasugoDraft: { pickup: s.pasugoDraft.dropoff, dropoff: s.pasugoDraft.pickup } })),
       clearPasugo: () => update((s) => ({ pasugoDraft: { pickup: null, dropoff: s.home } })),
 
-      setErrandStore: (store: Stop, storeId: string | null) =>
-        update((s) => ({ errand: { store, storeId, items: s.errand.storeId === storeId && storeId ? s.errand.items : [] } })),
-      addErrandItem: (name: string) =>
+      /** Adds a store to the pabili draft (ignored if it is already there or the draft is full). Returns its key. */
+      addErrandStore: (store: Stop, storeId: string | null): string => {
+        const key = uid();
+        update((s) => {
+          if (hasStore(s.errand, store, storeId) || s.errand.stops.length >= MAX_STORES) return {};
+          return { errand: { stops: [...s.errand.stops, { key, store, storeId, items: [] }] } };
+        });
+        return key;
+      },
+      removeErrandStore: (key: string) => update((s) => ({ errand: { stops: s.errand.stops.filter((st) => st.key !== key) } })),
+      addErrandItem: (stopKey: string, name: string) =>
         update((s) => {
           const clean = name.trim();
           if (!clean) return {};
-          const existing = s.errand.items.find((i) => i.name.toLowerCase() === clean.toLowerCase());
-          const items = existing
-            ? s.errand.items.map((i) => (i === existing ? { ...i, qty: i.qty + 1 } : i))
-            : [...s.errand.items, { id: uid(), name: clean, qty: 1 }];
-          return { errand: { ...s.errand, items } };
+          return {
+            errand: {
+              stops: s.errand.stops.map((st) => {
+                if (st.key !== stopKey) return st;
+                const existing = st.items.find((i) => i.name.toLowerCase() === clean.toLowerCase());
+                const items = existing
+                  ? st.items.map((i) => (i === existing ? { ...i, qty: i.qty + 1 } : i))
+                  : [...st.items, { id: uid(), name: clean, qty: 1 }];
+                return { ...st, items };
+              }),
+            },
+          };
         }),
-      changeErrandQty: (id: string, delta: number) =>
+      changeErrandQty: (stopKey: string, id: string, delta: number) =>
         update((s) => ({
-          errand: { ...s.errand, items: s.errand.items.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0) },
+          errand: {
+            stops: s.errand.stops.map((st) =>
+              st.key === stopKey ? { ...st, items: st.items.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0) } : st),
+          },
         })),
       clearErrand: () => update(() => ({ errand: EMPTY_ERRAND })),
     }),

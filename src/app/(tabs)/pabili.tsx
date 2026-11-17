@@ -67,10 +67,12 @@ export default function Pabili() {
         renderItem={({ item }) => <StoreCard r={item} km={kmFor(item)} />}
         ListEmptyComponent={loading ? undefined : <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or use “Buy from any store”" />}
       />
-      {count > 0 && state.errand.store && (
+      {state.errand.stops.length > 0 && (
         <Pressable style={styles.cartBar} onPress={() => router.push('/order')}>
           <View style={styles.badge}><Text style={{ color: colors.primary, fontWeight: '800' }}>{count}</Text></View>
-          <Text style={[styles.cartText, { flex: 1 }]} numberOfLines={1}>Continue order · {state.errand.store.name}</Text>
+          <Text style={[styles.cartText, { flex: 1 }]} numberOfLines={1}>
+            Continue order · {state.errand.stops.length === 1 ? state.errand.stops[0].store.name : `${state.errand.stops.length} stores`}
+          </Text>
           <MaterialCommunityIcons name="chevron-right" size={22} color="#fff" />
         </Pressable>
       )}

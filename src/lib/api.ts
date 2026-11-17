@@ -25,11 +25,15 @@ export type Order = {
   base_fee: number; discount: number; booking_fee: number; fee: number; promo_code: string | null;
   rider_share: number; rider_earning: number; commission_waived: boolean; payment: PaymentMethod;
   items: ErrandItem[] | null; note: string | null; budget: number | null; receipt_amount: number | null; store_id: string | null;
+  stops: OrderStop[] | null; store_count: number;
   cargo: Cargo | null; description: string | null; sender: Contact | null; receiver: Contact | null;
   rating: number | null;
   created_at: string; accepted_at: string | null; at_pickup_at: string | null; picked_up_at: string | null;
   delivered_at: string | null; cancelled_at: string | null; cancelled_by: string | null;
 };
+/** One store in a pabili order, with its own shopping list. */
+export type OrderStop = { name: string; lat: number; lng: number; store_id: string | null; items: ErrandItem[] };
+
 export type StoreRow = {
   id: string; name: string; tagline: string; category: Category; emoji: string; tint: string; rating: number;
   wait_minutes: number; lat: number; lng: number; address: string; favorites: string[]; active: boolean; created_at: string;
@@ -45,6 +49,14 @@ export const ACTIVE_STATUSES: OrderStatus[] = ['accepted', 'at_pickup', 'picked_
 export const isOpen = (o: Order) => o.status !== 'delivered' && o.status !== 'cancelled';
 
 /** Numeric columns come back from PostgREST as numbers; coordinates in `path` are stored as {latitude, longitude}. */
+/** The stores of a pabili order in visiting order (single-store and older orders give one stop). */
+export const stopsOf = (o: Order): OrderStop[] =>
+  o.stops?.length ? o.stops : [{ name: o.pickup_name, lat: o.pickup_lat, lng: o.pickup_lng, store_id: o.store_id, items: o.items ?? [] }];
+/** "Crispy Coop" or "Crispy Coop + 2 more stores". */
+export const storesLabel = (o: Order) => {
+  const n = stopsOf(o).length;
+  return n > 1 ? `${o.pickup_name} + ${n - 1} more store${n > 2 ? 's' : ''}` : o.pickup_name;
+};
 export const pickupOf = (o: Order): Stop => ({ name: o.pickup_name, location: { latitude: o.pickup_lat, longitude: o.pickup_lng } });
 export const dropoffOf = (o: Order): Stop => ({ name: o.dropoff_name, location: { latitude: o.dropoff_lat, longitude: o.dropoff_lng } });
 
@@ -162,6 +174,8 @@ export function usePrices(): Prices {
 export type NewOrder = {
   kind: OrderKind; pickup: Stop; dropoff: Stop; km: number; path: LatLng[] | null; payment: PaymentMethod; promo_code?: string;
   vehicle?: Vehicle; items?: ErrandItem[]; note?: string; budget?: number; store_id?: string | null;
+  /** Pabili: the stores in visiting order, each with its items. The first is also `pickup`. */
+  stops?: OrderStop[];
   cargo?: Cargo; description?: string; sender?: Contact; receiver?: Contact;
 };
 export async function placeOrder(o: NewOrder): Promise<Order> {

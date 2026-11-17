@@ -7,7 +7,7 @@ import { useRider } from '@/components/rider/RiderContext';
 import { useLocationSharing } from '@/components/rider/useLocationSharing';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
 import {
-  acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, useCustomerProfile, useOpenJobs, useRiderOrders,
+  acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, stopsOf, storesLabel, useCustomerProfile, useOpenJobs, useRiderOrders,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { deliveredSince, nextStepLabel, RIDER_TODO, summarize } from '@/lib/driver';
@@ -76,9 +76,12 @@ export default function Jobs() {
                   <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{o.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {Number(o.km).toFixed(1)} km</Text>
                   <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(Number(o.rider_earning))}</Text>
                 </View>
-                <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {o.pickup_name}</Text>
+                {o.kind === 'pabili'
+                  ? stopsOf(o).map((st, i) => <Text key={i} style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {st.name}</Text>)
+                  : <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {o.pickup_name}</Text>}
                 <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {o.dropoff_name}</Text>
                 {o.items ? <Text style={styles.line}>🛒 {o.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</Text> : null}
+                {o.store_count > 1 ? <Text style={[styles.line, { color: colors.primary, fontWeight: '700' }]}>{o.store_count} stores — buy at each, then deliver</Text> : null}
                 {o.description ? <Text style={styles.line}>{CARGO[o.cargo ?? 'parcel'].emoji} {o.description}</Text> : null}
                 <Text style={[styles.line, { color: colors.muted }]}>
                   {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}{o.vehicle === 'car' ? ' · car' : ''}
@@ -99,14 +102,20 @@ export default function Jobs() {
   );
 }
 
-/** Lets the rider pick a navigation app; each falls back to Google Maps in the browser. */
+/** The main Navigate button: the (first) store or pickup until picked up, then the customer. */
 function openNavigation(o: Order) {
-  const toPickup = o.status === 'accepted';
-  const [lat, lng, name] = toPickup ? [o.pickup_lat, o.pickup_lng, o.pickup_name] : [o.dropoff_lat, o.dropoff_lng, o.dropoff_name];
+  const toPickup = o.status === 'accepted' || (o.kind === 'pabili' && o.status === 'at_pickup' && o.store_count > 1);
+  if (toPickup) return navigateTo(o.pickup_lat, o.pickup_lng, o.pickup_name, 'pickup');
+  navigateTo(o.dropoff_lat, o.dropoff_lng, o.dropoff_name, 'drop-off');
+}
+
+/** Lets the rider pick a navigation app; each falls back to Google Maps in the browser. */
+function navigateTo(lat: number, lng: number, name: string, what: string) {
+  const toPickup = what !== 'drop-off';
   const ll = `${lat},${lng}`;
   const web = `https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`;
   const go = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(web));
-  Alert.alert(`Navigate to ${toPickup ? 'pickup' : 'drop-off'}`, name, [
+  Alert.alert(`Navigate to ${toPickup ? what : 'drop-off'}`, name, [
     { text: 'Google Maps', onPress: () => go(Platform.OS === 'ios' ? `comgooglemaps://?daddr=${ll}&directionsmode=driving` : `google.navigation:q=${ll}`) },
     { text: 'Waze', onPress: () => go(`https://waze.com/ul?ll=${ll}&navigate=yes`) },
     ...(Platform.OS === 'ios' ? [{ text: 'Apple Maps', onPress: () => go(`http://maps.apple.com/?daddr=${ll}&dirflg=d`) }] : []),
@@ -142,14 +151,16 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
       <MapPreview
         height={200}
         pins={[
-          { id: 'p', coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: pabili ? 'store' : 'pickup' },
+          ...(pabili
+            ? stopsOf(o).map((st, i) => ({ id: `s${i}`, coord: { latitude: st.lat, longitude: st.lng }, kind: 'store' as const }))
+            : [{ id: 'p', coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: 'pickup' as const }]),
           { id: 'd', coord: { latitude: o.dropoff_lat, longitude: o.dropoff_lng }, kind: 'dropoff' },
         ]}
         path={o.path?.length ? o.path : [{ latitude: o.pickup_lat, longitude: o.pickup_lng }, { latitude: o.dropoff_lat, longitude: o.dropoff_lng }]}
       />
       <View style={{ padding: 16 }}>
-        <Text style={{ color: colors.ride, fontWeight: '800' }}>{RIDER_TODO[o.status]?.[o.kind]}</Text>
-        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{o.status === 'picked_up' ? o.dropoff_name : o.pickup_name}</Text>
+        <Text style={{ color: colors.ride, fontWeight: '800' }}>{o.kind === 'pabili' && o.store_count > 1 && o.status === 'at_pickup' ? `Buy at all ${o.store_count} stores, keep every receipt` : RIDER_TODO[o.status]?.[o.kind]}</Text>
+        <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{o.status === 'picked_up' ? o.dropoff_name : pabili ? storesLabel(o) : o.pickup_name}</Text>
         <Text style={{ color: colors.muted, marginTop: 4 }}>
           Job {o.code} · {Number(o.km).toFixed(1)} km · you earn {peso(Number(o.rider_earning))}
         </Text>
@@ -158,7 +169,19 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
           <View style={styles.list}>
             <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>{pabili ? 'Shopping list' : CARGO[o.cargo ?? 'parcel'].label}</Text>
             {pabili
-              ? o.items!.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 2 }}>•  {i.qty}× {i.name}</Text>)
+              ? stopsOf(o).map((st, si, all) => (
+                <View key={si} style={{ marginTop: si ? 8 : 0 }}>
+                  {all.length > 1 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontWeight: '800', color: colors.text, flex: 1 }}>{si + 1}. {st.name}</Text>
+                      <Pressable onPress={() => navigateTo(st.lat, st.lng, st.name, 'store')} hitSlop={6}>
+                        <Text style={{ color: colors.ride, fontWeight: '700' }}>Navigate here</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                  {st.items.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 2 }}>•  {i.qty}× {i.name}</Text>)}
+                </View>
+              ))
               : <Text style={{ color: colors.text }}>{o.description}</Text>}
             {o.budget ? <Text style={{ color: colors.muted, marginTop: 4 }}>Spend at most {peso(Number(o.budget))}</Text> : null}
             {o.note ? <Text style={{ color: colors.muted, marginTop: 4 }}>Note: {o.note}</Text> : null}
@@ -175,7 +198,7 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
 
         {buying && (
           <View style={{ marginTop: 12 }}>
-            <Text style={{ color: colors.muted, marginBottom: 6 }}>Receipt total you paid</Text>
+            <Text style={{ color: colors.muted, marginBottom: 6 }}>{o.store_count > 1 ? `Total of all ${o.store_count} receipts you paid` : 'Receipt total you paid'}</Text>
             <View style={styles.receipt}>
               <Text style={{ fontWeight: '700', color: colors.text }}>₱</Text>
               <TextInput

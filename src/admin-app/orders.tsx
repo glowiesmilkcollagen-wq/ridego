@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Badge, confirmAction, notify, Page, Panel, Segmented, SmallButton, Table } from '@/components/admin/ui';
 import { adminCancelOrder, useAllOrders, useRiders } from '@/lib/adminApi';
-import { isOpen, Order, OrderStatus } from '@/lib/api';
+import { isOpen, Order, OrderStatus, stopsOf } from '@/lib/api';
 import { errorText } from '@/lib/supabase';
 import { CARGO, statusText } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
@@ -52,7 +52,7 @@ export default function Orders() {
               new Date(o.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
               o.kind === 'pabili' ? 'Pabili' : `Pasugo · ${CARGO[o.cargo ?? 'parcel'].label.split(' ')[0]}`,
               o.customer_name || '—',
-              `${o.pickup_name} → ${o.dropoff_name} (${Number(o.km).toFixed(1)} km)`,
+              `${o.kind === 'pabili' ? stopsOf(o).map((st) => st.name).join(' → ') : o.pickup_name} → ${o.dropoff_name} (${Number(o.km).toFixed(1)} km)`,
               o.rider_id ? names.get(o.rider_id) ?? '—' : '—',
               peso(Number(o.fee)),
               <Badge key="s" text={statusText(o).label} tone={TONE[o.status]} />,
@@ -71,7 +71,9 @@ function Details({ o }: { o: Order }) {
   const line = (k: string, v?: string | null) => (v ? <Text style={{ color: colors.text }}><Text style={{ color: colors.muted }}>{k}: </Text>{v}</Text> : null);
   return (
     <View style={{ backgroundColor: colors.bg, borderRadius: 8, padding: 12, gap: 3 }}>
-      {line('Items', o.items?.map((i) => `${i.qty}× ${i.name}`).join(', '))}
+      {o.kind === 'pabili' && stopsOf(o).map((st, i, all) => (
+        <React.Fragment key={i}>{line(all.length > 1 ? `Store ${i + 1} · ${st.name}` : 'Items', st.items.map((it) => `${it.qty}× ${it.name}`).join(', '))}</React.Fragment>
+      ))}
       {line('What / who', o.description)}
       {line('Pickup contact', o.sender ? `${o.sender.name} ${o.sender.phone}` : null)}
       {line('Receiver', o.receiver ? `${o.receiver.name} ${o.receiver.phone}` : null)}

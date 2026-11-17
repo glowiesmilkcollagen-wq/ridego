@@ -82,6 +82,7 @@ export default function Fees() {
           {f('pabili_base', 'Base fee (₱)')}
           {f('pabili_base_km', 'Km included in base')}
           {f('pabili_per_km', 'Per extra km (₱)')}
+          {f('pabili_per_store', 'Per store (₱)', 'Charged for each store, including the first.')}
         </View>
       </Panel>
       <Panel title="Pasugo — motorcycle">
@@ -103,7 +104,7 @@ export default function Fees() {
             return [`${km} km`, peso(fee), peso(booking), peso(fee + booking), peso(rider), peso(fee + booking - rider)];
           })}
         />
-        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances: {[2, 5, 8, 12].map((km) => peso(deliveryFee(km, p))).join(' · ')} (before booking fee). Promo discounts come out of RideGo’s part.</Text>
+        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances, 1 store: {[2, 5, 8, 12].map((km) => peso(deliveryFee(km, p))).join(' · ')}; each extra store adds {peso(p.pabili_per_store)} (before booking fee). Promo discounts come out of RideGo’s part.</Text>
       </Panel>
       <View style={{ height: 1, borderRadius: radius.sm }} />
     </Page>

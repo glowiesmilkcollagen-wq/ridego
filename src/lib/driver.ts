@@ -1,10 +1,11 @@
 import type { Order, OrderStatus } from './api';
 
 /** The button a rider taps to move the job to its next status. */
-export function nextStepLabel(o: Pick<Order, 'kind' | 'status'>): string | null {
+export function nextStepLabel(o: Pick<Order, 'kind' | 'status'> & { store_count?: number }): string | null {
   const pabili = o.kind === 'pabili';
-  if (o.status === 'accepted') return pabili ? 'Arrived at store' : 'Arrived at pickup';
-  if (o.status === 'at_pickup') return pabili ? 'Items bought' : 'Picked up';
+  const many = (o.store_count ?? 1) > 1;
+  if (o.status === 'accepted') return pabili ? (many ? 'Arrived at first store' : 'Arrived at store') : 'Arrived at pickup';
+  if (o.status === 'at_pickup') return pabili ? (many ? 'All items bought' : 'Items bought') : 'Picked up';
   if (o.status === 'picked_up') return pabili ? 'Delivered & paid' : 'Delivered';
   return null;
 }

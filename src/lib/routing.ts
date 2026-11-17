@@ -43,12 +43,19 @@ function thin(path: LatLng[], max = MAX_PATH_POINTS) {
 }
 
 export function estimateRoute(a: LatLng, b: LatLng): Route {
-  return { km: roadKm(a, b), path: [a, b], estimated: true };
+  return estimateRouteVia([a, b]);
+}
+export function estimateRouteVia(points: LatLng[]): Route {
+  const km = points.slice(1).reduce((s, p, i) => s + roadKm(points[i], p), 0);
+  return { km, path: points, estimated: true };
 }
 
-/** The road route from `a` to `b`. Falls back to an estimate when offline; failures are not cached. */
-export function getRoute(a: LatLng, b: LatLng): Promise<Route> {
-  const key = `${pt(a)};${pt(b)}`;
+/** The road route from `a` to `b`. */
+export const getRoute = (a: LatLng, b: LatLng) => getRouteVia([a, b]);
+
+/** The road route through `points` in order (e.g. store 1 → store 2 → customer). Falls back to an estimate when offline; failures are not cached. */
+export function getRouteVia(points: LatLng[]): Promise<Route> {
+  const key = points.map(pt).join(';');
   let p = routeCache.get(key);
   if (!p) {
     p = fetchJson(`${ROUTING_URL}/route/v1/driving/${key}?overview=full&geometries=geojson`)
@@ -59,7 +66,7 @@ export function getRoute(a: LatLng, b: LatLng): Promise<Route> {
       })
       .catch(() => {
         routeCache.delete(key);
-        return estimateRoute(a, b);
+        return estimateRouteVia(points);
       });
     routeCache.set(key, p);
   }
@@ -93,13 +100,19 @@ export function getStoreDistances(stores: Store[], dest: LatLng): Promise<Record
 
 /** Loads the road route between two points; `route` is null while loading or when a point is missing. */
 export function useRoute(a?: LatLng | null, b?: LatLng | null) {
+  return useRouteVia([a, b]);
+}
+
+/** Loads the road route through several points in order; null while loading or when any point is missing. */
+export function useRouteVia(points: (LatLng | null | undefined)[]) {
   const [route, setRoute] = useState<Route | null>(null);
-  const key = a && b ? `${pt(a)};${pt(b)}` : '';
+  const ready = points.length >= 2 && points.every(Boolean);
+  const key = ready ? (points as LatLng[]).map(pt).join(';') : '';
   useEffect(() => {
-    if (!a || !b) return setRoute(null);
+    if (!ready) return setRoute(null);
     let live = true;
     setRoute(null);
-    getRoute(a, b).then((r) => live && setRoute(r));
+    getRouteVia(points as LatLng[]).then((r) => live && setRoute(r));
     return () => {
       live = false;
     };

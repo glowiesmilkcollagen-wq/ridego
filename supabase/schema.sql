@@ -68,6 +68,7 @@ create table if not exists public.settings (
   pabili_base numeric not null default 49,
   pabili_base_km numeric not null default 2,
   pabili_per_km numeric not null default 10,
+  pabili_per_store numeric not null default 20,   -- added for each store the rider buys from
   moto_base numeric not null default 40,
   moto_per_km numeric not null default 10,
   moto_per_min numeric not null default 1,
@@ -82,6 +83,7 @@ create table if not exists public.settings (
 alter table public.settings add column if not exists booking_fee numeric not null default 15 check (booking_fee >= 0);
 alter table public.settings add column if not exists beta_waiver boolean not null default true;
 alter table public.settings alter column rider_share set default 0.7;
+alter table public.settings add column if not exists pabili_per_store numeric not null default 20;
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
 create table if not exists public.promotions (
@@ -131,7 +133,11 @@ create table if not exists public.orders (
   note text,
   budget numeric,
   receipt_amount numeric,
-  store_id uuid references public.stores (id),
+  store_id uuid references public.stores (id),   -- first store (kept for older apps; see stops)
+  -- Pabili with several stores: [{name, lat, lng, store_id, items: [{id, name, qty}]}], visited in order.
+  -- pickup_* is the first store; items is every store's items together.
+  stops jsonb,
+  store_count int not null default 1,
   -- pasugo
   cargo text check (cargo in ('document', 'parcel', 'person')),
   description text,
@@ -148,6 +154,8 @@ create table if not exists public.orders (
 );
 alter table public.orders add column if not exists booking_fee numeric not null default 0;
 alter table public.orders add column if not exists commission_waived boolean not null default false;
+alter table public.orders add column if not exists stops jsonb;
+alter table public.orders add column if not exists store_count int not null default 1;
 create index if not exists orders_customer_idx on public.orders (customer_id, created_at desc);
 create index if not exists orders_rider_idx on public.orders (rider_id, created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
@@ -188,7 +196,9 @@ returns numeric language sql immutable set search_path = '' as $$
 $$;
 
 -- Same formulas as src/lib/pricing.ts, with prices from the settings row.
-create or replace function public.compute_fee(p_kind public.order_kind, p_km numeric, p_vehicle text default 'moto')
+-- (The earlier 3-argument version is dropped so calls are not ambiguous.)
+drop function if exists public.compute_fee(public.order_kind, numeric, text);
+create or replace function public.compute_fee(p_kind public.order_kind, p_km numeric, p_vehicle text default 'moto', p_stores int default 1)
 returns numeric language plpgsql stable security definer set search_path = public as $$
 declare
   s public.settings;
@@ -196,7 +206,7 @@ declare
 begin
   select * into s from public.settings where id = 1;
   if p_kind = 'pabili' then
-    return round(s.pabili_base + greatest(0, p_km - s.pabili_base_km) * s.pabili_per_km);
+    return round(s.pabili_base + greatest(0, p_km - s.pabili_base_km) * s.pabili_per_km + s.pabili_per_store * greatest(1, p_stores));
   end if;
   eta := greatest(3, round(p_km / (case when p_vehicle = 'car' then 16 else 24 end) * 60));
   if p_vehicle = 'car' then
@@ -272,22 +282,54 @@ declare
   s public.settings;
   share numeric;
   booking numeric;
+  stops jsonb := case when p ->> 'kind' = 'pabili' and jsonb_typeof(p -> 'stops') = 'array' then p -> 'stops' end;
+  stop jsonb;
+  all_items jsonb := '[]'::jsonb;
+  prev_lat double precision;
+  prev_lng double precision;
+  n_stores int := 1;
   o public.orders;
 begin
   select * into me from public.profiles where id = auth.uid();
   if not found then raise exception 'Please log in first'; end if;
+  if stops is not null then
+    -- Pabili from several stores: the first store is the pickup; check each store has a place and a list.
+    n_stores := jsonb_array_length(stops);
+    if n_stores < 1 then raise exception 'Add at least one store'; end if;
+    if n_stores > 5 then raise exception 'A pabili order can include at most 5 stores'; end if;
+    for stop in select * from jsonb_array_elements(stops) loop
+      if (stop ->> 'lat') is null or (stop ->> 'lng') is null or coalesce(trim(stop ->> 'name'), '') = '' then raise exception 'Each store needs a name and location'; end if;
+      if jsonb_array_length(coalesce(stop -> 'items', '[]'::jsonb)) = 0 then raise exception 'Add at least one item for %', stop ->> 'name'; end if;
+      all_items := all_items || (stop -> 'items');
+    end loop;
+    plat := (stops -> 0 ->> 'lat')::double precision;
+    plng := (stops -> 0 ->> 'lng')::double precision;
+    p := jsonb_set(jsonb_set(p, '{pickup}', jsonb_build_object('name', stops -> 0 ->> 'name')), '{items}', all_items);
+    if (stops -> 0 ->> 'store_id') is not null then p := jsonb_set(p, '{store_id}', stops -> 0 -> 'store_id'); end if;
+  end if;
   if plat is null or plng is null or dlat is null or dlng is null then raise exception 'Pickup and drop-off are required'; end if;
   if k = 'pabili' and jsonb_array_length(coalesce(p -> 'items', '[]'::jsonb)) = 0 then raise exception 'Add at least one item to buy'; end if;
   if k = 'pasugo' and coalesce(trim(p ->> 'description'), '') = '' then raise exception 'Describe what the rider will pick up'; end if;
   if veh not in ('moto', 'car') or (k = 'pabili' and veh <> 'moto') then veh := 'moto'; end if;
 
   -- The road distance comes from the app's routing; keep it within sane bounds of the straight-line distance.
-  straight := public.km_between(plat, plng, dlat, dlng);
+  if stops is not null then
+    -- Straight-line length of store 1 → store 2 → … → customer.
+    straight := 0;
+    prev_lat := plat; prev_lng := plng;
+    for stop in select * from jsonb_array_elements(stops) loop
+      straight := straight + public.km_between(prev_lat, prev_lng, (stop ->> 'lat')::double precision, (stop ->> 'lng')::double precision);
+      prev_lat := (stop ->> 'lat')::double precision; prev_lng := (stop ->> 'lng')::double precision;
+    end loop;
+    straight := straight + public.km_between(prev_lat, prev_lng, dlat, dlng);
+  else
+    straight := public.km_between(plat, plng, dlat, dlng);
+  end if;
   if dist is null or dist < straight then dist := straight * 1.3; end if;
   dist := round(least(dist, straight * 4 + 2), 2);
   if dist < 0.3 then raise exception 'Pickup and drop-off are too close'; end if;
 
-  base := public.compute_fee(k, dist, veh);
+  base := public.compute_fee(k, dist, veh, n_stores);
   if promo is not null then
     select pd.discount into disc from public.promo_discount(promo, k, base) pd;
   end if;
@@ -299,12 +341,12 @@ begin
   insert into public.orders (
     kind, customer_id, customer_name, pickup_name, pickup_lat, pickup_lng, dropoff_name, dropoff_lat, dropoff_lng,
     km, path, vehicle, base_fee, discount, booking_fee, fee, promo_code, rider_share, rider_earning, commission_waived, payment,
-    items, note, budget, store_id, cargo, description, sender, receiver
+    items, note, budget, store_id, stops, store_count, cargo, description, sender, receiver
   ) values (
     k, me.id, split_part(me.full_name, ' ', 1), p -> 'pickup' ->> 'name', plat, plng, p -> 'dropoff' ->> 'name', dlat, dlng,
     dist, p -> 'path', veh, base, disc, booking, base - disc + booking, promo, share, round(base * share), s.beta_waiver,
     coalesce((p ->> 'payment')::public.payment_method, 'cash'),
-    p -> 'items', p ->> 'note', (p ->> 'budget')::numeric, (p ->> 'store_id')::uuid, p ->> 'cargo', p ->> 'description', p -> 'sender', p -> 'receiver'
+    p -> 'items', p ->> 'note', (p ->> 'budget')::numeric, (p ->> 'store_id')::uuid, stops, n_stores, p ->> 'cargo', p ->> 'description', p -> 'sender', p -> 'receiver'
   ) returning * into o;
   return o;
 end $$;
@@ -497,7 +539,7 @@ grant execute on all functions in schema private to authenticated;
 -- Used only inside the database (triggers, and fee calculation inside place_order), never called by apps.
 revoke execute on function public.handle_new_user() from authenticated;
 revoke execute on function public.protect_role() from authenticated;
-revoke execute on function public.compute_fee(public.order_kind, numeric, text) from authenticated;
+revoke execute on function public.compute_fee(public.order_kind, numeric, text, int) from authenticated;
 -- Earlier versions kept these helpers in public; remove them (the policies above now use private.*).
 drop function if exists public.is_admin();
 drop function if exists public.my_rider();

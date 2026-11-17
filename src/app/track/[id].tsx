@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, T
 import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
-import { cancelOrder, isOpen, Order, rateOrder, useOrder } from '@/lib/api';
+import { cancelOrder, isOpen, Order, rateOrder, stopsOf, useOrder } from '@/lib/api';
 import { VEHICLES } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
 import { canCustomerCancel, CARGO, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
@@ -28,7 +28,9 @@ export default function Track() {
   const pickup = { latitude: o.pickup_lat, longitude: o.pickup_lng };
   const dropoff = { latitude: o.dropoff_lat, longitude: o.dropoff_lng };
   const pins: MapPin[] = [
-    { id: 'p', coord: pickup, kind: pabili ? 'store' : 'pickup' },
+    ...(pabili
+      ? stopsOf(o).map((st, i) => ({ id: `s${i}`, coord: { latitude: st.lat, longitude: st.lng }, kind: 'store' as const }))
+      : [{ id: 'p', coord: pickup, kind: 'pickup' as const }]),
     { id: 'd', coord: dropoff, kind: 'dropoff' },
     ...(riderPos ? [{ id: 'r', coord: riderPos, kind: 'rider' as const }] : []),
   ];
@@ -103,7 +105,11 @@ export default function Track() {
           )}
 
           <Card>
-            <StopLine icon={pabili ? 'storefront-outline' : 'map-marker'} color={colors.ride} title={pabili ? 'Buy from' : 'Pick up from'} text={o.pickup_name} />
+            {pabili
+              ? stopsOf(o).map((st, i, all) => (
+                <StopLine key={i} icon="storefront-outline" color={colors.ride} title={all.length > 1 ? `Store ${i + 1} of ${all.length}` : 'Buy from'} text={st.name} />
+              ))
+              : <StopLine icon="map-marker" color={colors.ride} title="Pick up from" text={o.pickup_name} />}
             <StopLine icon="flag-checkered" color={colors.primary} title={pabili ? 'Deliver to' : 'Bring to'} text={o.dropoff_name} />
             {o.note ? <StopLine icon="note-text-outline" color={colors.muted} title="Instructions" text={o.note} /> : null}
           </Card>
@@ -125,7 +131,12 @@ function Summary({ o }: { o: Order }) {
     <Card>
       <SectionTitle>{pabili ? 'Shopping list' : `${cargo.emoji}  ${cargo.label}`}</SectionTitle>
       {pabili
-        ? o.items?.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>)
+        ? stopsOf(o).map((st, si, all) => (
+          <View key={si} style={{ marginBottom: 6 }}>
+            {all.length > 1 && <Text style={{ fontWeight: '800', color: colors.text, marginTop: si ? 6 : 0 }}>{st.name}</Text>}
+            {st.items.map((i) => <Text key={i.id} style={{ color: colors.text, paddingVertical: 3 }}>{i.qty}×  {i.name}</Text>)}
+          </View>
+        ))
         : (
           <View style={{ gap: 4 }}>
             {o.description ? <Text style={{ color: colors.text }}>{o.description}</Text> : null}
@@ -135,12 +146,15 @@ function Summary({ o }: { o: Order }) {
           </View>
         )}
       <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
-      <Row label={`${pabili ? 'Delivery fee' : 'Pasugo fee'} (${Number(o.km).toFixed(1)} km)`} value={peso(Number(o.base_fee))} />
+      <Row
+        label={`${pabili ? 'Delivery fee' : 'Pasugo fee'} (${Number(o.km).toFixed(1)} km${pabili && o.store_count > 1 ? `, ${o.store_count} stores` : ''})`}
+        value={peso(Number(o.base_fee))}
+      />
       {Number(o.discount) > 0 && <Row label={`Promo ${o.promo_code}`} value={`−${peso(Number(o.discount))}`} valueColor={colors.ride} />}
       {Number(o.booking_fee) > 0
         ? <Row label="Booking fee" value={peso(Number(o.booking_fee))} />
         : o.commission_waived ? <Row label="Booking fee" value="Waived (beta)" valueColor={colors.ride} /> : null}
-      {pabili && <Row label="Items" value={receipt != null ? `${peso(receipt)} (receipt)` : 'Pay rider as per receipt'} />}
+      {pabili && <Row label="Items" value={receipt != null ? `${peso(receipt)} (receipt${o.store_count > 1 ? 's' : ''})` : `Pay rider as per receipt${o.store_count > 1 ? 's' : ''}`} />}
       {o.budget ? <Row label="Item spending limit" value={peso(Number(o.budget))} /> : null}
       <Row
         label={`${pabili && receipt != null ? 'Total to pay the rider' : 'You pay'} · ${PAYMENT_LABELS[o.payment]}`}

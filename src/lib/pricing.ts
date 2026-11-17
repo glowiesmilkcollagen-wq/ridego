@@ -16,6 +16,8 @@ export type Prices = {
   pabili_base: number;
   pabili_base_km: number;
   pabili_per_km: number;
+  /** Added for each store the rider buys from (pabili). */
+  pabili_per_store: number;
   moto_base: number;
   moto_per_km: number;
   moto_per_min: number;
@@ -31,7 +33,7 @@ export const DEFAULT_PRICES: Prices = {
   rider_share: 0.7,
   booking_fee: 15,
   beta_waiver: true,
-  pabili_base: 49, pabili_base_km: 2, pabili_per_km: 10,
+  pabili_base: 49, pabili_base_km: 2, pabili_per_km: 10, pabili_per_store: 20,
   moto_base: 40, moto_per_km: 10, moto_per_min: 1, moto_min: 50,
   car_base: 90, car_per_km: 18, car_per_min: 2, car_min: 140,
 };
@@ -47,9 +49,13 @@ export function etaMinutes(km: number, vehicle: Vehicle = 'moto') {
  * Pabili delivery fee. The items themselves are paid by the rider at the store and repaid by the customer
  * based on the receipt. The server recomputes this when the order is placed (public.compute_fee).
  */
-export function deliveryFee(km: number, p: Prices = DEFAULT_PRICES) {
-  return Math.round(p.pabili_base + Math.max(0, km - p.pabili_base_km) * p.pabili_per_km);
+export function deliveryFee(km: number, p: Prices = DEFAULT_PRICES, stores = 1) {
+  return Math.round(distanceFee(km, p) + storesFee(stores, p));
 }
+/** The distance part of the pabili fee. */
+export const distanceFee = (km: number, p: Prices = DEFAULT_PRICES) => Math.round(p.pabili_base + Math.max(0, km - p.pabili_base_km) * p.pabili_per_km);
+/** The per-store part of the pabili fee (₱20 per store by default, including the first). */
+export const storesFee = (stores: number, p: Prices = DEFAULT_PRICES) => Math.max(1, stores) * p.pabili_per_store;
 
 /** Pasugo fee by vehicle; mirrors public.compute_fee on the server. */
 export function pasugoFee(km: number, vehicle: Vehicle, p: Prices = DEFAULT_PRICES) {
