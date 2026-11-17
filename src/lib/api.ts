@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import type { Category, Store } from './data';
 import type { LatLng } from './geo';
 import { DEFAULT_PRICES, parsePrices, Prices, Vehicle } from './pricing';
@@ -99,8 +100,24 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-/** Loads a row and keeps it fresh: refetches on demand, on realtime changes to `table`, and every `pollMs`. */
-function useLive<T>(load: () => Promise<T>, deps: unknown[], opts: { table?: string; filter?: string; pollMs?: number; enabled?: boolean } = {}) {
+type LiveOpts = {
+  /** Realtime: reload when rows of this table change (rows the user may see, matching `filter`). */
+  table?: string;
+  filter?: string;
+  /** Safety-net reload interval while realtime is NOT connected. */
+  pollMs?: number;
+  /** Reload interval while realtime IS connected (default: 4 × pollMs, since changes arrive instantly). */
+  livePollMs?: number;
+  enabled?: boolean;
+};
+
+/**
+ * Loads data and keeps it fresh with as little traffic as possible:
+ * - reloads on realtime changes (bursts are combined into one reload),
+ * - polls only as a safety net — slowly while realtime is connected, faster if it drops,
+ * - stops polling while the app is in the background and reloads when it comes back.
+ */
+function useLive<T>(load: () => Promise<T>, deps: unknown[], opts: LiveOpts = {}) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loaded, setLoaded] = useState(false);
@@ -121,21 +138,86 @@ function useLive<T>(load: () => Promise<T>, deps: unknown[], opts: { table?: str
     if (!enabled || !supabaseConfigured) return;
     setLoaded(false);
     refresh();
-    const timer = opts.pollMs ? setInterval(refresh, opts.pollMs) : undefined;
+    let realtime = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const foreground = () => AppState.currentState === 'active' || Platform.OS === 'web';
+    const schedule = () => {
+      if (timer) clearInterval(timer);
+      timer = undefined;
+      if (!foreground()) return;
+      const ms = realtime ? opts.livePollMs ?? (opts.pollMs ? opts.pollMs * 4 : undefined) : opts.pollMs;
+      if (ms) timer = setInterval(refresh, ms);
+    };
+    const soon = () => {
+      if (pending) clearTimeout(pending);
+      pending = setTimeout(refresh, 300);
+    };
+    schedule();
     let channel: ReturnType<typeof supabase.channel> | undefined;
     if (opts.table) {
       channel = supabase
         .channel(`live-${opts.table}-${opts.filter ?? 'all'}-${Math.random().toString(36).slice(2)}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: opts.table, ...(opts.filter ? { filter: opts.filter } : {}) }, () => refresh())
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: opts.table, ...(opts.filter ? { filter: opts.filter } : {}) }, soon)
+        .subscribe((status) => {
+          const was = realtime;
+          realtime = status === 'SUBSCRIBED';
+          if (was !== realtime) {
+            schedule();
+            if (realtime) soon(); // catch up on anything missed while connecting
+          }
+        });
     }
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        refresh();
+        schedule();
+      } else if (timer) {
+        clearInterval(timer);
+        timer = undefined;
+      }
+    });
     return () => {
       if (timer) clearInterval(timer);
+      if (pending) clearTimeout(pending);
+      appState.remove();
       if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, refresh, opts.table, opts.filter, opts.pollMs, ...deps]);
+  }, [enabled, refresh, opts.table, opts.filter, opts.pollMs, opts.livePollMs, ...deps]);
   return { data, error, loaded, refresh, setData };
+}
+
+/** Data every screen shares (stores, prices): loaded once for the whole app and refreshed when older than `ttlMs`. */
+type SharedEntry<T> = { data?: T; error?: unknown; at: number; inflight?: Promise<void>; subs: Set<() => void> };
+const shared = new Map<string, SharedEntry<unknown>>();
+function useShared<T>(key: string, load: () => Promise<T>, ttlMs: number) {
+  let entry = shared.get(key) as SharedEntry<T> | undefined;
+  if (!entry) {
+    entry = { at: 0, subs: new Set() };
+    shared.set(key, entry as SharedEntry<unknown>);
+  }
+  const e = entry;
+  const [, rerender] = useState(0);
+  const fetchNow = useCallback(() => {
+    if (e.inflight) return e.inflight;
+    e.inflight = load()
+      .then((d) => { e.data = d; e.error = undefined; e.at = Date.now(); })
+      .catch((err) => { e.error = err; })
+      .finally(() => { e.inflight = undefined; e.subs.forEach((f) => f()); });
+    return e.inflight;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    const sub = () => rerender((n) => n + 1);
+    e.subs.add(sub);
+    const ifStale = () => { if (Date.now() - e.at > ttlMs && (AppState.currentState === 'active' || Platform.OS === 'web')) fetchNow(); };
+    ifStale();
+    const t = setInterval(ifStale, Math.min(ttlMs, 60_000));
+    return () => { e.subs.delete(sub); clearInterval(t); };
+  }, [e, fetchNow, ttlMs]);
+  return { data: e.data ?? null, error: e.error, loaded: e.data !== undefined || e.error !== undefined, refresh: fetchNow };
 }
 
 // ───────────────────────────── Profile, stores, prices ─────────────────────────────
@@ -151,21 +233,19 @@ export async function updateProfile(id: string, fullName: string, phone: string)
 }
 
 export function useStores() {
-  const live = useLive<Store[]>(
+  const live = useShared<Store[]>(
+    'stores',
     async () => (must(await supabase.from('stores').select('*').eq('active', true).order('category').order('name')) as StoreRow[]).map(toStore),
-    [],
-    { pollMs: 5 * 60_000 },
+    5 * 60_000,
   );
-  return { stores: live.data ?? [], loading: live.data === null && !live.error, error: live.error, refresh: live.refresh };
+  return { stores: live.data ?? [], loading: !live.loaded, error: live.error, refresh: live.refresh };
 }
 
 export function usePrices(): Prices {
-  const live = useLive<Prices>(
-    async () => {
-      return parsePrices(must(await supabase.from('settings').select('*').eq('id', 1).maybeSingle()) as Record<string, unknown> | null);
-    },
-    [],
-    { pollMs: 5 * 60_000 },
+  const live = useShared<Prices>(
+    'prices',
+    async () => parsePrices(must(await supabase.from('settings').select('*').eq('id', 1).maybeSingle()) as Record<string, unknown> | null),
+    5 * 60_000,
   );
   return live.data ?? DEFAULT_PRICES;
 }
@@ -239,7 +319,9 @@ export function useOpenJobs(enabled: boolean) {
   return useLive<Order[]>(
     async () => must(await supabase.from('orders').select('*').eq('status', 'searching').order('created_at').limit(30)) as Order[],
     [],
-    { enabled, table: 'orders', pollMs: 10_000 },
+    // Realtime only for orders waiting for a rider. A job taken by another rider sends this rider no event
+    // (it is no longer visible to them), so keep a 15-second safety net even while realtime is connected.
+    { enabled, table: 'orders', filter: 'status=eq.searching', pollMs: 15_000, livePollMs: 15_000 },
   );
 }
 
