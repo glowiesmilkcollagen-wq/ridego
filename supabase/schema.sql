@@ -161,6 +161,9 @@ alter table public.orders add column if not exists store_count int not null defa
 create index if not exists orders_customer_idx on public.orders (customer_id, created_at desc);
 create index if not exists orders_rider_idx on public.orders (rider_id, created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
+create index if not exists orders_store_idx on public.orders (store_id);
+-- Riders' open-job list: only the few orders still waiting for a rider.
+create index if not exists orders_searching_idx on public.orders (created_at) where status = 'searching';
 
 -- Cash a rider handed to the company (remittance), or money the company paid a rider (payout).
 create table if not exists public.rider_transactions (
@@ -172,6 +175,8 @@ create table if not exists public.rider_transactions (
   created_by uuid references public.profiles (id) default auth.uid(),
   created_at timestamptz not null default now()
 );
+create index if not exists rider_transactions_rider_idx on public.rider_transactions (rider_id, created_at desc);
+create index if not exists rider_transactions_created_by_idx on public.rider_transactions (created_by);
 
 -- ───────────────────────────── Helpers ─────────────────────────────
 -- Internal helpers live in the `private` schema, which the Data API does not expose: the security rules can use
@@ -496,44 +501,66 @@ do $$ declare pol record; begin
   loop execute format('drop policy %I on public.%I', pol.policyname, pol.tablename); end loop;
 end $$;
 
--- Admins can do everything.
-create policy admin_all on public.profiles for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.riders for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.stores for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.settings for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.promotions for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.orders for all using (private.is_admin()) with check (private.is_admin());
-create policy admin_all on public.rider_transactions for all using (private.is_admin()) with check (private.is_admin());
+-- One policy per table and action (Postgres checks every permissive policy, so overlapping ones cost time), and
+-- auth.uid() / is_admin() wrapped in (select …) so they are evaluated once per query, not once per row.
 
--- Profiles: yourself, plus the other person on an order you share (customer ↔ rider).
-create policy own_profile on public.profiles for select using (id = auth.uid());
-create policy own_profile_update on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
-create policy order_partner_profile on public.profiles for select using (
-  exists (select 1 from public.orders o where (o.customer_id = auth.uid() and o.rider_id = profiles.id)
-                                         or (o.rider_id = auth.uid() and o.customer_id = profiles.id))
+-- Profiles: yourself, the other person on an order you share (customer ↔ rider), and admins.
+create policy profiles_select on public.profiles for select to authenticated using (
+  id = (select auth.uid())
+  or (select private.is_admin())
+  or exists (select 1 from public.orders o
+             where (o.customer_id = (select auth.uid()) and o.rider_id = profiles.id)
+                or (o.rider_id = (select auth.uid()) and o.customer_id = profiles.id))
 );
+create policy profiles_update on public.profiles for update to authenticated
+  using (id = (select auth.uid()) or (select private.is_admin()))
+  with check (id = (select auth.uid()) or (select private.is_admin()));
+create policy profiles_insert on public.profiles for insert to authenticated with check ((select private.is_admin()));
+create policy profiles_delete on public.profiles for delete to authenticated using ((select private.is_admin()));
 
--- Riders: yourself, plus customers can see the rider (vehicle, plate, live location) on their open orders.
-create policy own_rider on public.riders for select using (id = auth.uid());
-create policy customers_see_their_rider on public.riders for select using (
-  exists (select 1 from public.orders o where o.rider_id = riders.id and o.customer_id = auth.uid()
-          and o.status in ('accepted', 'at_pickup', 'picked_up'))
+-- Riders: yourself, customers see the rider (vehicle, plate, live location) on their open orders, and admins.
+create policy riders_select on public.riders for select to authenticated using (
+  id = (select auth.uid())
+  or (select private.is_admin())
+  or exists (select 1 from public.orders o where o.rider_id = riders.id and o.customer_id = (select auth.uid())
+             and o.status in ('accepted', 'at_pickup', 'picked_up'))
 );
+create policy riders_insert on public.riders for insert to authenticated with check ((select private.is_admin()));
+create policy riders_update on public.riders for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy riders_delete on public.riders for delete to authenticated using ((select private.is_admin()));
 
--- Stores and prices are readable by everyone signed in.
-create policy read_active_stores on public.stores for select to authenticated using (active);
-create policy read_settings on public.settings for select to authenticated using (true);
+-- Stores and prices: everyone signed in reads (active stores only, unless admin); admins write.
+create policy stores_select on public.stores for select to authenticated using (active or (select private.is_admin()));
+create policy stores_insert on public.stores for insert to authenticated with check ((select private.is_admin()));
+create policy stores_update on public.stores for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy stores_delete on public.stores for delete to authenticated using ((select private.is_admin()));
+create policy settings_select on public.settings for select to authenticated using (true);
+create policy settings_insert on public.settings for insert to authenticated with check ((select private.is_admin()));
+create policy settings_update on public.settings for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy settings_delete on public.settings for delete to authenticated using ((select private.is_admin()));
 
--- Orders: customers see theirs; riders see theirs, and open jobs while approved and online.
-create policy customer_orders on public.orders for select using (customer_id = auth.uid());
-create policy rider_orders on public.orders for select using (rider_id = auth.uid());
-create policy open_jobs on public.orders for select using (
-  status = 'searching' and exists (
-    select 1 from private.my_rider() r where r.status = 'approved' and r.online and (r.vehicle = orders.vehicle or orders.kind = 'pabili')
-  )
+-- Promotions: admins only (customers check codes through promo_discount()).
+create policy promotions_admin on public.promotions for all to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+
+-- Orders: customers see theirs; riders see theirs, and open jobs while approved and online; admins see all.
+-- Customers and riders change orders only through the functions above.
+create policy orders_select on public.orders for select to authenticated using (
+  customer_id = (select auth.uid())
+  or rider_id = (select auth.uid())
+  or (select private.is_admin())
+  or (status = 'searching' and exists (
+        select 1 from private.my_rider() r where r.status = 'approved' and r.online and (r.vehicle = orders.vehicle or orders.kind = 'pabili')))
 );
+create policy orders_insert on public.orders for insert to authenticated with check ((select private.is_admin()));
+create policy orders_update on public.orders for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy orders_delete on public.orders for delete to authenticated using ((select private.is_admin()));
 
-create policy own_transactions on public.rider_transactions for select using (rider_id = auth.uid());
+-- Rider cash records: the rider reads their own; admins read and write.
+create policy rider_transactions_select on public.rider_transactions for select to authenticated
+  using (rider_id = (select auth.uid()) or (select private.is_admin()));
+create policy rider_transactions_insert on public.rider_transactions for insert to authenticated with check ((select private.is_admin()));
+create policy rider_transactions_update on public.rider_transactions for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy rider_transactions_delete on public.rider_transactions for delete to authenticated using ((select private.is_admin()));
 
 -- ───────────────────────────── Permissions ─────────────────────────────
 -- Writes from the apps go through the functions above; only admins write tables directly (checked by RLS).
