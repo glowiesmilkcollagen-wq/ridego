@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
 import TripCard from '@/components/TripCard';
+import { showBecomeRider } from '@/components/becomeRider';
 import { SectionTitle } from '@/components/ui';
 import { isOpen, useMyOrders, useStores } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -50,11 +51,11 @@ export default function Home() {
           <Pressable style={[styles.service, { backgroundColor: colors.ride }]} onPress={() => router.push('/pasugo')}>
             <Text style={styles.serviceEmoji}>📦</Text>
             <Text style={styles.serviceTitle}>Pasugo</Text>
-            <Text style={styles.serviceSub}>We pick up anything — or anyone</Text>
+            <Text style={styles.serviceSub}>We pick up anything</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.driverBanner} onPress={() => Alert.alert('Become a RideGo rider', 'Riders use the separate RideGo Rider app to receive jobs, navigate and track earnings. It will be available on the App Store and Google Play.')}>
+        <Pressable style={styles.driverBanner} onPress={showBecomeRider}>
           <MaterialCommunityIcons name="card-account-details-star-outline" size={28} color={colors.text} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a RideGo rider</Text>

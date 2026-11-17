@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showBecomeRider } from '@/components/becomeRider';
 import { Button, Card, SectionTitle } from '@/components/ui';
 import { signOut, updateProfile, useMyOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -60,13 +61,13 @@ export default function Account() {
         <Card style={{ paddingVertical: 4 }}>
           <Item icon="home-outline" label="Saved address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
           <Item icon="receipt-text-outline" label="Orders & rides" sub={`${orders.data?.length ?? 0} total`} onPress={() => router.push('/activity')} />
-          <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={() => Alert.alert('Become a RideGo rider', 'Riders use the separate RideGo Rider app to receive jobs, navigate and track earnings. It will be available on the App Store and Google Play.')} last />
+          <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={showBecomeRider} last />
         </Card>
 
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo v2.0 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (pick up & deliver anything, or anyone). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
+            RideGo v2.0 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
           </Text>
         </Card>
 
