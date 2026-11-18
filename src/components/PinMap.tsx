@@ -8,18 +8,28 @@ import { colors } from '@/lib/theme';
 export type PinMapHandle = { moveTo: (p: LatLng) => void };
 
 /** A map with a fixed pin in the middle: the customer drags the map until the pin sits on the place. */
-export default function PinMap({ start, onChange, height = 320, handle }: {
+export default function PinMap({ start, onChange, height = 320, handle, onTouchingChange }: {
   start: LatLng; onChange: (p: LatLng) => void; height?: number; handle?: React.MutableRefObject<PinMapHandle | null>;
+  /** True while a finger is on the map, so the screen can stop scrolling and let the map move. */
+  onTouchingChange?: (touching: boolean) => void;
 }) {
   const map = useRef<MapView>(null);
-  if (handle) handle.current = { moveTo: (p) => map.current?.animateToRegion({ ...p, latitudeDelta: 0.004, longitudeDelta: 0.004 }, 400) };
+  const moveTo = (p: LatLng) => map.current?.animateToRegion({ ...p, latitudeDelta: 0.004, longitudeDelta: 0.004 }, 400);
+  if (handle) handle.current = { moveTo };
   return (
-    <View style={{ height, borderRadius: 16, overflow: 'hidden' }}>
+    <View
+      style={{ height, borderRadius: 16, overflow: 'hidden' }}
+      onTouchStart={() => onTouchingChange?.(true)}
+      onTouchEnd={() => onTouchingChange?.(false)}
+      onTouchCancel={() => onTouchingChange?.(false)}
+    >
       <MapView
         ref={map}
         style={StyleSheet.absoluteFill}
         initialRegion={{ ...start, latitudeDelta: 0.006, longitudeDelta: 0.006 }}
         onRegionChangeComplete={(r) => onChange({ latitude: r.latitude, longitude: r.longitude })}
+        // Tapping a spot moves the pin there (the map re-centres on it).
+        onPress={(e) => moveTo(e.nativeEvent.coordinate)}
         showsUserLocation
         toolbarEnabled={false}
       />

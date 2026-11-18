@@ -29,7 +29,9 @@ export default function CustomStore() {
   const [moved, setMoved] = useState(false);
   const [landmarks, setLandmarks] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [onMap, setOnMap] = useState(false);
   const map = useRef<PinMapHandle | null>(null);
+  const nameInput = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const moveTo = (p: LatLng) => {
     setPin(p);
@@ -39,7 +41,12 @@ export default function CustomStore() {
 
   const confirm = () => {
     const clean = name.trim();
-    if (!clean) return Alert.alert('Store name', 'Type the name of the store so the rider knows what to look for.');
+    if (!clean) {
+      Alert.alert('Type the store name first', 'Add the name of the store at the top so the rider knows what to look for.', [
+        { text: 'OK', onPress: () => nameInput.current?.focus() },
+      ]);
+      return;
+    }
     // The rider sees the name and the directions; the pin sets the route and fee.
     const stop = { name: directions.trim() ? `${clean} — ${directions.trim()}` : clean, location: pin };
     if (mode === 'add') {
@@ -68,10 +75,10 @@ export default function CustomStore() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <Stack.Screen options={{ title: mode === 'add' ? 'Add a store not on the list' : 'Buy from a store not on the list' }} />
-      <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
+      <ScrollView scrollEnabled={!onMap} style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.label}>Store name</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="e.g. Aling Nena's sari-sari store" placeholderTextColor={colors.muted} style={styles.input} autoFocus={!name} />
+          <TextInput ref={nameInput} value={name} onChangeText={setName} placeholder="e.g. Aling Nena's sari-sari store" placeholderTextColor={colors.muted} style={styles.input} autoFocus={!name} />
           <Text style={[styles.label, { marginTop: 12 }]}>Directions for the rider (optional)</Text>
           <TextInput
             value={directions} onChangeText={setDirections} multiline placeholderTextColor={colors.muted} style={[styles.input, { minHeight: 56, textAlignVertical: 'top' }]}
@@ -82,9 +89,9 @@ export default function CustomStore() {
         <View>
           <Text style={styles.h2}>Pin the store on the map</Text>
           <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 10, lineHeight: 19 }}>
-            Drag the map until the pin is on the store. This sets the route and the delivery fee.
+            Drag the map (or tap a spot) until the pin is on the store. This sets the route and the delivery fee.
           </Text>
-          <PinMap start={state.home.location} handle={map} onChange={(p) => { setPin(p); setMoved(true); }} />
+          <PinMap start={state.home.location} handle={map} onTouchingChange={setOnMap} onChange={(p) => { setPin(p); setMoved(true); }} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <Pressable onPress={here} disabled={locating} style={styles.chip}>
               {locating ? <ActivityIndicator color={colors.primary} size="small" /> : <MaterialCommunityIcons name="crosshairs-gps" size={18} color={colors.primary} />}
@@ -114,7 +121,8 @@ export default function CustomStore() {
         </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
-        <Button title="Use this location" icon="map-marker-check-outline" onPress={confirm} disabled={!name.trim()} />
+        {!name.trim() && <Text style={{ color: colors.muted, textAlign: 'center', marginBottom: 8, fontSize: 13 }}>Type the store name above, then tap the button.</Text>}
+        <Button title="Use this location" icon="map-marker-check-outline" onPress={confirm} />
       </View>
     </KeyboardAvoidingView>
   );

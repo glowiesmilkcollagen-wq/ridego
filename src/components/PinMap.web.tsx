@@ -9,6 +9,7 @@ export type PinMapHandle = { moveTo: (p: LatLng) => void };
 /** Web has no draggable native map; the pin follows "My location" or the landmark list instead. */
 export default function PinMap({ start, height = 320, handle, onChange }: {
   start: LatLng; onChange: (p: LatLng) => void; height?: number; handle?: React.MutableRefObject<PinMapHandle | null>;
+  onTouchingChange?: (touching: boolean) => void;
 }) {
   const [pos, setPos] = React.useState(start);
   if (handle) handle.current = { moveTo: (p) => { setPos(p); onChange(p); } };
