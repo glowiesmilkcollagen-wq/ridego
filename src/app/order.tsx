@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,7 @@ import { colors, peso, radius } from '@/lib/theme';
 const isPharmacy = (st: ErrandStop, known?: Store) => known?.category === 'Medicine' || /pharma|drug|botika|parmasya/i.test(st.store.name);
 
 export default function Order() {
+  const headerHeight = useHeaderHeight();
   const { state, clearErrand } = useStore();
   const { stores } = useStores();
   const prices = usePrices();
@@ -73,8 +75,8 @@ export default function Order() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 14 }} keyboardShouldPersistTaps="handled">
         {stops.map((st, i) => (
           <StoreSection key={st.key} stop={st} index={i} count={n} known={knownOf(st)} />
         ))}

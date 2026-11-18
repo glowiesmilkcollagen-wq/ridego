@@ -77,6 +77,7 @@ export default function PlaceSearch() {
         </Pressable>
       )}
       <FlatList
+        contentInsetAdjustmentBehavior="automatic"
         data={results}
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"

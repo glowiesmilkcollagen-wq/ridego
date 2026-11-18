@@ -1,14 +1,16 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { confirmAction } from '@/components/admin/ui';
 import PinMap, { PinMapHandle } from '@/components/PinMap';
 import { Button } from '@/components/ui';
 import { useStartErrand } from '@/components/useStartErrand';
 import { PLACES } from '@/lib/data';
-import { LatLng } from '@/lib/geo';
+import { distanceKm, LatLng } from '@/lib/geo';
 import { MAX_STORES, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
@@ -23,6 +25,7 @@ export default function CustomStore() {
   const { state, addErrandStore } = useStore();
   const startErrand = useStartErrand();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const [name, setName] = useState(params.name ?? '');
   const [directions, setDirections] = useState('');
   const [pin, setPin] = useState<LatLng>(state.home.location);
@@ -47,6 +50,19 @@ export default function CustomStore() {
       ]);
       return;
     }
+    // The pin starts on the delivery address: make sure the customer really meant that.
+    if (distanceKm(pin, state.home.location) < 0.02) {
+      confirmAction(
+        'Is the store at your delivery address?',
+        'The pin is still on your delivery address. Tap "No" and move the map so the pin is on the store, or "Yes" if the store really is there.',
+        () => save(clean),
+      );
+      return;
+    }
+    save(clean);
+  };
+
+  const save = (clean: string) => {
     // The rider sees the name and the directions; the pin sets the route and fee.
     const stop = { name: directions.trim() ? `${clean} — ${directions.trim()}` : clean, location: pin };
     if (mode === 'add') {
@@ -73,9 +89,9 @@ export default function CustomStore() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <Stack.Screen options={{ title: mode === 'add' ? 'Add a store not on the list' : 'Buy from a store not on the list' }} />
-      <ScrollView scrollEnabled={!onMap} style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
+      <Stack.Screen options={{ title: mode === 'add' ? 'Add a store' : 'Other store' }} />
+      <ScrollView contentInsetAdjustmentBehavior="automatic" scrollEnabled={!onMap} style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Text style={styles.label}>Store name</Text>
           <TextInput ref={nameInput} value={name} onChangeText={setName} placeholder="e.g. Aling Nena's sari-sari store" placeholderTextColor={colors.muted} style={styles.input} autoFocus={!name} />

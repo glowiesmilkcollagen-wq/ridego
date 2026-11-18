@@ -75,6 +75,7 @@ export default function StorePicker() {
         <Text style={[styles.name, { color: colors.primary, marginLeft: 12 }]}>A store at my current location</Text>
       </Pressable>
       <SectionList
+        contentInsetAdjustmentBehavior="automatic"
         sections={sections}
         keyExtractor={(r) => r.key}
         keyboardShouldPersistTaps="handled"

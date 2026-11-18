@@ -38,6 +38,9 @@ function Gate() {
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '700' },
         headerBackButtonDisplayMode: 'minimal',
+        // A solid bar: on newer iPhones a see-through bar lets the page slide under the title.
+        headerTransparent: false,
+        headerStyle: { backgroundColor: '#fff' },
         contentStyle: { backgroundColor: colors.bg },
       }}
     >
@@ -46,7 +49,7 @@ function Gate() {
       <Stack.Screen name="track/[id]" options={{ title: 'Tracking' }} />
       <Stack.Screen name="place-search" options={{ title: 'Choose location' }} />
       <Stack.Screen name="store-picker" options={{ title: 'Add another store' }} />
-      <Stack.Screen name="custom-store" options={{ title: 'Store not on the list' }} />
+      <Stack.Screen name="custom-store" options={{ title: 'Other store' }} />
     </Stack>
   );
 }

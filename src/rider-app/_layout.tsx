@@ -41,7 +41,7 @@ function Gate() {
   if (!rider) return <RegisterScreen onDone={setRider} />;
   if (rider.status !== 'approved') return <StatusScreen rider={rider} onRefresh={refresh} />;
   return (
-    <Stack screenOptions={{ headerTintColor: colors.text, headerTitleStyle: { fontWeight: '700' }, contentStyle: { backgroundColor: colors.bg } }}>
+    <Stack screenOptions={{ headerTintColor: colors.text, headerTitleStyle: { fontWeight: '700' }, headerTransparent: false, headerStyle: { backgroundColor: '#fff' }, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );

@@ -56,7 +56,7 @@ export default function Track() {
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}` }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 32 }}>
         <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon="motorbike" />
 
         <View style={{ padding: 16, gap: 14 }}>
