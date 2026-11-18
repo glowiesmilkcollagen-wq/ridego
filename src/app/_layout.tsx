@@ -50,6 +50,8 @@ function Gate() {
       <Stack.Screen name="place-search" options={{ title: 'Choose location' }} />
       <Stack.Screen name="store-picker" options={{ title: 'Add another store' }} />
       <Stack.Screen name="custom-store" options={{ title: 'Other store' }} />
+      <Stack.Screen name="pin-location" options={{ title: 'Pin the address' }} />
+      <Stack.Screen name="saved-addresses" options={{ title: 'Saved addresses' }} />
     </Stack>
   );
 }

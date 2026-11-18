@@ -5,6 +5,8 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import TypeStoreRow from '@/components/TypeStoreRow';
 import { useStartErrand } from '@/components/useStartErrand';
+import { addressStop, markAddressUsed, SavedAddress, useSavedAddresses } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { PLACES } from '@/lib/data';
 import { Stop } from '@/lib/trips';
 import { useStore } from '@/lib/store';
@@ -14,6 +16,9 @@ export default function PlaceSearch() {
   const { target } = useLocalSearchParams<{ target: 'pickup' | 'dropoff' | 'home' | 'store' }>();
   const startErrand = useStartErrand();
   const { state, setPasugoStop, setHome } = useStore();
+  const { userId } = useAuth();
+  const isAddress = target === 'home' || target === 'pickup' || target === 'dropoff';
+  const saved = useSavedAddresses(isAddress ? userId : null);
   const [q, setQ] = useState('');
   const [locating, setLocating] = useState(false);
 
@@ -21,6 +26,15 @@ export default function PlaceSearch() {
     const s = q.trim().toLowerCase();
     return s ? PLACES.filter((p) => `${p.name} ${p.area}`.toLowerCase().includes(s)) : PLACES;
   }, [q]);
+  const savedShown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? saved.addresses.filter((a) => `${a.label} ${a.details}`.toLowerCase().includes(s)) : saved.addresses;
+  }, [q, saved.addresses]);
+
+  const chooseSaved = (a: SavedAddress) => {
+    markAddressUsed(a.id).then(() => saved.refresh());
+    choose(addressStop(a));
+  };
 
   const choose = (stop: Stop) => {
     if (target === 'store') return startErrand(stop, null, 'replace');
@@ -63,6 +77,16 @@ export default function PlaceSearch() {
         />
       </View>
       {target === 'store' && <TypeStoreRow q={q} mode="start" />}
+      {isAddress && (
+        <Pressable style={[styles.item, styles.pinRow]} onPress={() => router.replace(`/pin-location?target=${target}`)}>
+          <View style={styles.pinIcon}><MaterialCommunityIcons name="map-marker-plus-outline" size={22} color="#fff" /></View>
+          <View style={{ marginLeft: 12, flex: 1 }}>
+            <Text style={[styles.name, { color: colors.primary }]}>Pin on the map</Text>
+            <Text style={styles.area}>Put the pin on the exact gate or door, and save it for next time</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+        </Pressable>
+      )}
       <Pressable style={styles.item} onPress={useCurrent}>
         {locating ? <ActivityIndicator color={colors.primary} /> : <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.primary} />}
         <Text style={[styles.name, { color: colors.primary, marginLeft: 12 }]}>Use my current location</Text>
@@ -78,6 +102,23 @@ export default function PlaceSearch() {
       )}
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
+        ListHeaderComponent={
+          savedShown.length ? (
+            <View>
+              <Text style={styles.section}>Saved addresses</Text>
+              {savedShown.map((a) => (
+                <Pressable key={a.id} style={styles.item} onPress={() => chooseSaved(a)}>
+                  <MaterialCommunityIcons name={iconFor(a.label)} size={22} color={colors.primary} />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={styles.name} numberOfLines={1}>{a.label || a.details}</Text>
+                    {a.label ? <Text style={styles.area} numberOfLines={2}>{a.details}</Text> : null}
+                  </View>
+                </Pressable>
+              ))}
+              <Text style={styles.section}>Places</Text>
+            </View>
+          ) : undefined
+        }
         data={results}
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"
@@ -95,6 +136,8 @@ export default function PlaceSearch() {
   );
 }
 
+const iconFor = (label: string): any => (/^home$/i.test(label.trim()) ? 'home-outline' : /^work$/i.test(label.trim()) ? 'briefcase-outline' : 'map-marker-star-outline');
+
 const TITLES = { pickup: 'Pick up from', dropoff: 'Bring to', home: 'Delivery address', store: 'Where should the rider buy?' };
 
 const styles = StyleSheet.create({
@@ -106,4 +149,7 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
   name: { fontSize: 15, fontWeight: '600', color: colors.text },
   area: { color: colors.muted, marginTop: 2 },
+  pinRow: { backgroundColor: colors.primarySoft },
+  pinIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  section: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6, fontSize: 13, fontWeight: '800', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
 });

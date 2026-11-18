@@ -785,3 +785,64 @@ drop trigger if exists riders_push on public.riders;
 create trigger riders_push after update of status on public.riders
   for each row execute function private.riders_push();
 revoke execute on function private.send_push(jsonb), private.push_to(uuid, text, text, text, jsonb, text) from public, anon, authenticated;
+
+-- ============================================================================
+-- Saved addresses: each customer keeps up to 20 pinned places. Saving a 21st replaces
+-- the least used one (fewest uses, then longest unused).
+-- ============================================================================
+create table if not exists public.saved_addresses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  label text not null default '' check (length(label) <= 40),
+  details text not null check (length(trim(details)) between 1 and 200),
+  lat double precision not null check (lat between -90 and 90),
+  lng double precision not null check (lng between -180 and 180),
+  use_count int not null default 0,
+  last_used_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create index if not exists saved_addresses_user_idx on public.saved_addresses (user_id, use_count desc, last_used_at desc);
+alter table public.saved_addresses enable row level security;
+drop policy if exists saved_addresses_select on public.saved_addresses;
+create policy saved_addresses_select on public.saved_addresses for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists saved_addresses_delete on public.saved_addresses;
+create policy saved_addresses_delete on public.saved_addresses for delete to authenticated using (user_id = (select auth.uid()));
+-- Inserts and updates go through the functions below (they enforce the limit).
+revoke insert, update on public.saved_addresses from anon, authenticated;
+grant select, delete on public.saved_addresses to authenticated;
+
+create or replace function public.save_address(p_label text, p_details text, p_lat double precision, p_lng double precision)
+returns public.saved_addresses language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  a public.saved_addresses;
+begin
+  if uid is null then raise exception 'Please log in first'; end if;
+  if coalesce(trim(p_details), '') = '' then raise exception 'Add the address details (house no., street, landmark)'; end if;
+  -- Same spot (within about 15 m) already saved: update it instead of adding a copy.
+  select * into a from public.saved_addresses
+  where user_id = uid and public.km_between(lat, lng, p_lat, p_lng) < 0.015
+  order by created_at limit 1;
+  if found then
+    update public.saved_addresses set label = left(trim(coalesce(p_label, '')), 40), details = left(trim(p_details), 200),
+      lat = p_lat, lng = p_lng, use_count = use_count + 1, last_used_at = now()
+    where id = a.id returning * into a;
+    return a;
+  end if;
+  -- At the limit: replace the least used address.
+  if (select count(*) from public.saved_addresses where user_id = uid) >= 20 then
+    delete from public.saved_addresses where id = (
+      select id from public.saved_addresses where user_id = uid order by use_count asc, last_used_at asc limit 1);
+  end if;
+  insert into public.saved_addresses (user_id, label, details, lat, lng, use_count)
+  values (uid, left(trim(coalesce(p_label, '')), 40), left(trim(p_details), 200), p_lat, p_lng, 1)
+  returning * into a;
+  return a;
+end $$;
+
+create or replace function public.use_address(p_id uuid) returns void
+language sql security definer set search_path = public as $$
+  update public.saved_addresses set use_count = use_count + 1, last_used_at = now() where id = p_id and user_id = auth.uid();
+$$;
+revoke execute on function public.save_address(text, text, double precision, double precision), public.use_address(uuid) from public, anon;
+grant execute on function public.save_address(text, text, double precision, double precision), public.use_address(uuid) to authenticated;

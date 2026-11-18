@@ -28,6 +28,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
       heading: 'What we collect',
       body: [
         'Account: your name, email address, mobile number and password (stored encrypted; we can never see it).',
+        'Saved addresses: places you pin and choose to save (up to 20), with the details and names you give them. You can delete them in Account → Saved addresses.',
         'Orders: what you ask a rider to buy or pick up, store names, pickup and drop-off places and their map location, contact names and numbers you enter for a pickup or receiver, fees, promo codes, receipt amounts, ratings and order times.',
         'Location: while you use the app, your location to set your address and show nearby stores (only if you allow it). Riders: their location while they are online, so customers can follow their order.',
         'Riders also give their motorcycle plate number and driver’s license number for approval.',

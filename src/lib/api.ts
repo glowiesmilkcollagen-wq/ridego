@@ -242,6 +242,36 @@ function useShared<T>(key: string, load: () => Promise<T>, ttlMs: number) {
   return { data: e.data ?? null, error: e.error, loaded: e.data !== undefined || e.error !== undefined, refresh: fetchNow };
 }
 
+// ───────────────────────────── Saved addresses ─────────────────────────────
+/** A place the customer pinned and saved (up to 20; saving a 21st replaces the least used one). */
+export type SavedAddress = {
+  id: string; label: string; details: string; lat: number; lng: number; use_count: number; last_used_at: string; created_at: string;
+};
+export const MAX_SAVED_ADDRESSES = 20;
+/** How an address appears on orders: "Home · Blk 5 Lot 2, Mabini St" (the rider sees this). */
+export const addressText = (a: { label: string; details: string }) => (a.label.trim() ? `${a.label.trim()} · ${a.details.trim()}` : a.details.trim());
+export const addressStop = (a: SavedAddress) => ({ name: addressText(a), location: { latitude: a.lat, longitude: a.lng } });
+
+/** The signed-in customer's saved addresses, most used first. */
+export function useSavedAddresses(userId?: string | null) {
+  const live = useShared<SavedAddress[]>(
+    `addresses:${userId ?? 'none'}`,
+    async () => (userId ? (must(await supabase.from('saved_addresses').select('*').order('use_count', { ascending: false }).order('last_used_at', { ascending: false })) as SavedAddress[]) : []),
+    10 * 60_000,
+  );
+  return { addresses: live.data ?? [], loading: !live.loaded, refresh: live.refresh };
+}
+export async function saveAddress(label: string, details: string, lat: number, lng: number): Promise<SavedAddress> {
+  return must(await supabase.rpc('save_address', { p_label: label, p_details: details, p_lat: lat, p_lng: lng })) as SavedAddress;
+}
+/** Counts a use, so often-used addresses stay at the top and are never the one replaced. */
+export async function markAddressUsed(id: string) {
+  await supabase.rpc('use_address', { p_id: id });
+}
+export async function deleteAddress(id: string) {
+  must(await supabase.from('saved_addresses').delete().eq('id', id));
+}
+
 // ───────────────────────────── Profile, stores, prices ─────────────────────────────
 export function useProfile(userId?: string) {
   return useLive<Profile | null>(

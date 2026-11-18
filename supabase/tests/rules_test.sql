@@ -290,3 +290,32 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
 select unregister_push_token('ExponentPushToken[cust-b2]');
 reset role;
 select pg_temp.check(not exists (select 1 from push_tokens where token = 'ExponentPushToken[cust-b2]'), 'token removed on logout');
+
+\echo '21. saved addresses: up to 20 per customer, the least used one is replaced'
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+select pg_temp.expect_error($$select save_address('Home', '  ', 14.55, 121.02)$$, 'address details');
+select pg_temp.expect_error($$insert into saved_addresses (user_id, details, lat, lng) values (auth.uid(), 'x', 1, 1)$$, 'permission denied');
+-- 20 places spread ~1 km apart; place 7 gets used a lot, place 3 is the least used and oldest.
+select save_address('Place ' || i, 'Street ' || i, 14.50 + i * 0.01, 121.0) from generate_series(1, 20) i;
+select use_address(id) from saved_addresses where label <> 'Place 3';
+select use_address(id) from saved_addresses where label = 'Place 7';
+select pg_temp.check((select count(*) from saved_addresses) = 20, '20 saved');
+-- Saving the same spot again updates it instead of adding a copy.
+select save_address('Lola''s house', 'Street 7, blue gate', 14.57 + 0.00005, 121.0);
+select pg_temp.check((select count(*) from saved_addresses) = 20 and exists (select 1 from saved_addresses where label = 'Lola''s house'), 'same spot updated, not duplicated');
+-- A 21st place replaces the least used one (Place 3).
+select save_address('Office', 'Ayala Ave', 14.80, 121.0);
+select pg_temp.check((select count(*) from saved_addresses) = 20, 'still 20 after the 21st');
+select pg_temp.check(not exists (select 1 from saved_addresses where label = 'Place 3'), 'least used (Place 3) was replaced');
+select pg_temp.check(exists (select 1 from saved_addresses where label = 'Office'), 'new address kept');
+-- Others can't see or delete them.
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) from saved_addresses) = 0, 'other customers see none');
+delete from saved_addresses;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+select pg_temp.check((select count(*) from saved_addresses) = 20, 'other customers cannot delete them');
+-- The owner can delete one.
+delete from saved_addresses where label = 'Office';
+select pg_temp.check((select count(*) from saved_addresses) = 19, 'owner can delete');
+reset role;

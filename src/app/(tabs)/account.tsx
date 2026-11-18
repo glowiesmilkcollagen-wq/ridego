@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showBecomeRider } from '@/components/becomeRider';
 import { Button, Card, SectionTitle } from '@/components/ui';
 import { AccountActions } from '@/components/AccountActions';
-import { signOut, updateProfile, useMyOrders } from '@/lib/api';
+import { MAX_SAVED_ADDRESSES, signOut, updateProfile, useMyOrders, useSavedAddresses } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useStore } from '@/lib/store';
 import { errorText } from '@/lib/supabase';
@@ -16,6 +16,7 @@ export default function Account() {
   const { state } = useStore();
   const { session, userId, profile, refreshProfile } = useAuth();
   const orders = useMyOrders(userId);
+  const { addresses } = useSavedAddresses(userId);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -60,7 +61,8 @@ export default function Account() {
         </Card>
 
         <Card style={{ paddingVertical: 4 }}>
-          <Item icon="home-outline" label="Saved address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
+          <Item icon="home-outline" label="Delivery address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
+          <Item icon="map-marker-star-outline" label="Saved addresses" sub={`${addresses.length} of ${MAX_SAVED_ADDRESSES} saved`} onPress={() => router.push('/saved-addresses')} />
           <Item icon="receipt-text-outline" label="Orders & rides" sub={`${orders.data?.length ?? 0} total`} onPress={() => router.push('/activity')} />
           <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={showBecomeRider} last />
         </Card>
