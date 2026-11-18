@@ -13,7 +13,7 @@ export function nextStepLabel(o: Pick<Order, 'kind' | 'status'> & { store_count?
 /** What the rider should be doing now. */
 export const RIDER_TODO: Partial<Record<OrderStatus, Record<Order['kind'], string>>> = {
   accepted: { pabili: 'Head to the store', pasugo: 'Head to pickup point' },
-  at_pickup: { pabili: 'Order and pay for the items', pasugo: 'Collect the item or passenger' },
+  at_pickup: { pabili: 'Order and pay for the items', pasugo: 'Collect the item' },
   picked_up: { pabili: 'Deliver and collect payment', pasugo: 'Bring to the drop-off point' },
 };
 

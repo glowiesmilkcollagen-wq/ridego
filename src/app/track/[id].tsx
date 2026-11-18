@@ -8,7 +8,7 @@ import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
 import { cancelOrder, isOpen, Order, rateOrder, stopsOf, useOrder } from '@/lib/api';
 import { VEHICLE_LABEL } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
-import { canCustomerCancel, CARGO, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
+import { canCustomerCancel, cargoOf, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
 
 export default function Track() {
@@ -125,7 +125,7 @@ export default function Track() {
 
 function Summary({ o }: { o: Order }) {
   const pabili = o.kind === 'pabili';
-  const cargo = CARGO[o.cargo ?? 'parcel'];
+  const cargo = cargoOf(o);
   const receipt = o.receipt_amount != null ? Number(o.receipt_amount) : null;
   return (
     <Card>
@@ -140,7 +140,7 @@ function Summary({ o }: { o: Order }) {
         : (
           <View style={{ gap: 4 }}>
             {o.description ? <Text style={{ color: colors.text }}>{o.description}</Text> : null}
-            {o.sender ? <Row label={o.cargo === 'person' ? 'Passenger' : 'Hand-over by'} value={contactText(o.sender)} /> : null}
+            {o.sender ? <Row label="Hand-over by" value={contactText(o.sender)} /> : null}
             <Row label="Received by" value={o.receiver ? contactText(o.receiver) : 'You'} />
             <Row label="Vehicle" value={VEHICLE_LABEL} />
           </View>

@@ -299,6 +299,10 @@ declare
 begin
   select * into me from public.profiles where id = auth.uid();
   if not found then raise exception 'Please log in first'; end if;
+  -- Passenger rides need LTFRB permits: pasugo carries documents and parcels only.
+  if k = 'pasugo' and coalesce(p ->> 'cargo', 'parcel') not in ('document', 'parcel') then
+    raise exception 'Pasugo carries documents and parcels only';
+  end if;
   if stops is not null then
     -- Pabili from several stores: the first store is the pickup; check each store has a place and a list.
     n_stores := jsonb_array_length(stops);

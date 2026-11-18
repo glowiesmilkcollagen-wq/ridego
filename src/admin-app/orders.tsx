@@ -4,7 +4,7 @@ import { Badge, confirmAction, notify, Page, Panel, Segmented, SmallButton, Tabl
 import { adminCancelOrder, useAllOrders, useRiders } from '@/lib/adminApi';
 import { isOpen, Order, OrderStatus, stopsOf } from '@/lib/api';
 import { errorText } from '@/lib/supabase';
-import { CARGO, statusText } from '@/lib/trips';
+import { cargoOf, statusText } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
 
 type Filter = 'open' | 'searching' | 'delivered' | 'cancelled' | 'all';
@@ -50,7 +50,7 @@ export default function Orders() {
             const row = [
               <Pressable key="c" onPress={() => setOpenId(openId === o.id ? null : o.id)}><Text style={{ color: colors.ride, fontWeight: '800' }}>{o.code}</Text></Pressable>,
               new Date(o.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
-              o.kind === 'pabili' ? 'Pabili' : `Pasugo · ${CARGO[o.cargo ?? 'parcel'].label.split(' ')[0]}`,
+              o.kind === 'pabili' ? 'Pabili' : `Pasugo · ${cargoOf(o).label.split(' ')[0]}`,
               o.customer_name || '—',
               `${o.kind === 'pabili' ? stopsOf(o).map((st) => st.name).join(' → ') : o.pickup_name} → ${o.dropoff_name} (${Number(o.km).toFixed(1)} km)`,
               o.rider_id ? names.get(o.rider_id) ?? '—' : '—',

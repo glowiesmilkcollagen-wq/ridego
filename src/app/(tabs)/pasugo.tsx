@@ -31,7 +31,6 @@ export default function Pasugo() {
   const [receiverPhone, setReceiverPhone] = useState('');
   const [showPay, setShowPay] = useState(false);
   const { pickup, dropoff } = state.pasugoDraft;
-  const person = cargo === 'person';
 
   // By default the rider brings it to you.
   useEffect(() => {
@@ -53,8 +52,7 @@ export default function Pasugo() {
   const book = async () => {
     if (!pickup || !dropoff || !route || booking) return;
     const missing = [
-      !description.trim() && (person ? 'who the rider is picking up' : 'what the rider is picking up'),
-      person && !senderPhone.trim() && "the passenger's mobile number",
+      !description.trim() && 'what the rider is picking up',
       !receiveMyself && !receiverPhone.trim() && "the receiver's mobile number",
     ].filter(Boolean);
     if (missing.length) return Alert.alert('A few details missing', `Please add ${missing.join(' and ')}.`);
@@ -86,7 +84,7 @@ export default function Pasugo() {
           <View style={{ padding: 16, paddingBottom: 12 }}>
             <Text style={styles.h1}>Pasugo</Text>
             <Text style={{ color: colors.muted, marginTop: 4, lineHeight: 20 }}>
-              A rider picks up a folder, a bag, or even a person, and brings it to you or anywhere you choose.
+              A rider picks up a document, a bag or a package, and brings it to you or anywhere you choose.
             </Text>
           </View>
           {pins.length > 1 && <MapPreview pins={pins} path={route?.path} height={190} />}
@@ -119,19 +117,19 @@ export default function Pasugo() {
             </Card>
 
             <Card>
-              <SectionTitle>{person ? 'Who are we picking up?' : 'What exactly?'}</SectionTitle>
+              <SectionTitle>What exactly?</SectionTitle>
               <TextInput
                 value={description} onChangeText={setDescription} multiline placeholder={CARGO[cargo].example}
                 placeholderTextColor={colors.muted} style={[styles.input, { minHeight: 56, textAlignVertical: 'top' }]}
               />
-              <Text style={styles.label}>{person ? 'Passenger contact' : 'Person at the pickup (optional)'}</Text>
+              <Text style={styles.label}>Person at the pickup (optional)</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <HalfInput value={senderName} onChangeText={setSenderName} placeholder="Name" placeholderTextColor={colors.muted} />
                 <HalfInput value={senderPhone} onChangeText={setSenderPhone} placeholder="Mobile no." keyboardType="phone-pad" placeholderTextColor={colors.muted} />
               </View>
 
               <View style={styles.toggle}>
-                <Text style={{ flex: 1, color: colors.text, fontWeight: '600' }}>{person ? "I'll meet them at the drop-off" : "I'll receive it myself"}</Text>
+                <Text style={{ flex: 1, color: colors.text, fontWeight: '600' }}>I'll receive it myself</Text>
                 <Switch value={receiveMyself} onValueChange={setReceiveMyself} trackColor={{ true: colors.ride }} />
               </View>
               {!receiveMyself && (
@@ -154,7 +152,7 @@ export default function Pasugo() {
                   <MaterialCommunityIcons name="motorbike" size={34} color={colors.text} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>Motorcycle</Text>
-                    <Text style={{ color: colors.muted, marginTop: 2 }}>Documents, bags, or 1 person</Text>
+                    <Text style={{ color: colors.muted, marginTop: 2 }}>Documents, bags and packages</Text>
                   </View>
                   <Text style={{ fontWeight: '800', fontSize: 16, color: colors.text }}>{peso(pasugoFee(km, prices))}</Text>
                 </View>
@@ -170,13 +168,6 @@ export default function Pasugo() {
 
                 <PromoField kind="pasugo" baseFee={baseFee} value={promo} onChange={setPromo} />
                 {prices.booking_fee > 0 && <View style={{ paddingHorizontal: 4 }}><BookingFeeRow prices={prices} /></View>}
-
-                {person && (
-                  <View style={styles.safety}>
-                    <MaterialCommunityIcons name="racing-helmet" size={20} color={colors.ride} />
-                    <Text style={{ marginLeft: 8, flex: 1, color: colors.text }}>The rider brings a spare helmet for your passenger.</Text>
-                  </View>
-                )}
 
                 <Button
                   title={tooShort ? 'Pickup and drop-off are too close' : `Book pasugo · ${peso(fee)}`}

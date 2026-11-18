@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/auth';
 import { deliveredSince, nextStepLabel, RIDER_TODO, summarize } from '@/lib/driver';
 import { percent } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
-import { CARGO, PAYMENT_LABELS } from '@/lib/trips';
+import { cargoOf, PAYMENT_LABELS } from '@/lib/trips';
 import { colors, peso, radius } from '@/lib/theme';
 
 export default function Jobs() {
@@ -72,7 +72,7 @@ export default function Jobs() {
             {(open.data ?? []).map((o) => (
               <Card key={o.id} style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <MaterialCommunityIcons name={(o.kind === 'pabili' ? 'basket-outline' : CARGO[o.cargo ?? 'parcel'].icon) as any} size={22} color={o.kind === 'pabili' ? colors.primary : colors.ride} />
+                  <MaterialCommunityIcons name={(o.kind === 'pabili' ? 'basket-outline' : cargoOf(o).icon) as any} size={22} color={o.kind === 'pabili' ? colors.primary : colors.ride} />
                   <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{o.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {Number(o.km).toFixed(1)} km</Text>
                   <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(Number(o.rider_earning))}</Text>
                 </View>
@@ -82,7 +82,7 @@ export default function Jobs() {
                 <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {o.dropoff_name}</Text>
                 {o.items ? <Text style={styles.line}>🛒 {o.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</Text> : null}
                 {o.store_count > 1 ? <Text style={[styles.line, { color: colors.primary, fontWeight: '700' }]}>{o.store_count} stores — buy at each, then deliver</Text> : null}
-                {o.description ? <Text style={styles.line}>{CARGO[o.cargo ?? 'parcel'].emoji} {o.description}</Text> : null}
+                {o.description ? <Text style={styles.line}>{cargoOf(o).emoji} {o.description}</Text> : null}
                 <Text style={[styles.line, { color: colors.muted }]}>
                   {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}
                 </Text>
@@ -137,7 +137,7 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
   const receiptValue = Number(receipt.replace(/[^0-9.]/g, ''));
   const contacts = [
     { label: `Customer · ${customer.data?.full_name || o.customer_name}`, phone: customer.data?.phone },
-    ...(o.sender?.phone ? [{ label: `${o.cargo === 'person' ? 'Passenger' : 'At pickup'} · ${o.sender.name || o.sender.phone}`, phone: o.sender.phone }] : []),
+    ...(o.sender?.phone ? [{ label: `At pickup · ${o.sender.name || o.sender.phone}`, phone: o.sender.phone }] : []),
     ...(o.receiver?.phone ? [{ label: `Receiver · ${o.receiver.name || o.receiver.phone}`, phone: o.receiver.phone }] : []),
   ].filter((c) => c.phone);
 
@@ -167,7 +167,7 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
 
         {(pabili ? !!o.items?.length : !!o.description) && o.status !== 'picked_up' && (
           <View style={styles.list}>
-            <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>{pabili ? 'Shopping list' : CARGO[o.cargo ?? 'parcel'].label}</Text>
+            <Text style={{ fontWeight: '800', color: colors.text, marginBottom: 4 }}>{pabili ? 'Shopping list' : cargoOf(o).label}</Text>
             {pabili
               ? stopsOf(o).map((st, si, all) => (
                 <View key={si} style={{ marginTop: si ? 8 : 0 }}>

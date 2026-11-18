@@ -17,7 +17,7 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
   (e.g. chicken from one place and medicine from another), each with its own shopping list. The fee adds **₱20 per store**, including the first
   (Admin → Fees & commission). Write the shopping list;
   a rider buys it with their own money and brings it. The customer repays the receipt amount plus the delivery fee — **the app only charges the delivery fee.**
-- **Pasugo** — a rider picks up a document, a bag, or a person and brings it to you or anywhere (nothing to buy). Motorcycles only.
+- **Pasugo** — a rider picks up a document, a bag or a package and brings it to you or anywhere (nothing to buy). Motorcycles only.
 - Promo codes, live tracking with the rider's real GPS position, call/text the rider, cancel (before the rider starts), rate.
 - Pays in **cash** for now (GCash/card show as "coming soon").
 
@@ -125,4 +125,4 @@ Run against any Postgres 15+: `npm run test:db -- "-h localhost -U postgres"`.
 - **Push notifications** for new jobs and order updates; **background location** for riders (today the rider app must stay open).
 - **Receipt and prescription photos**; **rider document uploads** (license, OR/CR) for approval.
 - **Routing**: add the Google server key (section 4); until then distances use the free OSRM demo server.
-- **Legal**: motorcycle passenger transport (pasugo "Person") and courier services are regulated in the Philippines (LTFRB/DOTr) — get permits first.
+- **Legal**: passenger rides were removed (motorcycle taxis need LTFRB permits). Check courier/delivery rules (DTI/DOTr) for your area.

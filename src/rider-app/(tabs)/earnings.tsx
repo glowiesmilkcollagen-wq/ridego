@@ -7,7 +7,7 @@ import { Order, useRiderMoney, useRiderOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { deliveredSince, summarize } from '@/lib/driver';
 import { percent } from '@/lib/pricing';
-import { CARGO, PAYMENT_LABELS } from '@/lib/trips';
+import { cargoOf, PAYMENT_LABELS } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
 
 type Period = 'today' | 'week' | 'all';
@@ -91,7 +91,7 @@ export default function Earnings() {
         renderItem={({ item: j }) => (
           <View style={styles.job}>
             <MaterialCommunityIcons
-              name={(j.kind === 'pabili' ? 'basket-outline' : CARGO[j.cargo ?? 'parcel'].icon) as any}
+              name={(j.kind === 'pabili' ? 'basket-outline' : cargoOf(j).icon) as any}
               size={20} color={j.kind === 'pabili' ? colors.primary : colors.ride}
             />
             <View style={{ flex: 1, marginLeft: 10 }}>

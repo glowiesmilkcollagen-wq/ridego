@@ -210,6 +210,8 @@ insert into ctx select 'o8', (place_order('{"kind":"pabili","dropoff":{"name":"H
   "stops":[{"name":"Aling Nena sari-sari — green gate","lat":14.5547,"lng":121.0244,"items":[{"id":"a","name":"Coke","qty":1}]}]}')).id;
 select pg_temp.check((select km from orders where id = (select v::uuid from ctx where k = 'o8')) = 0.3, 'next-door store: distance floored at 0.3 km');
 select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5547,"lng":121.0244},"dropoff":{"name":"b","lat":14.5547,"lng":121.0244},"km":0,"description":"x"}')$$, 'too close');
+-- No passenger rides (needs LTFRB permits).
+select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5547,"lng":121.0244},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":6,"description":"x","cargo":"person"}')$$, 'documents and parcels only');
 
 \echo '15. anonymous visitors see nothing'
 reset role;
