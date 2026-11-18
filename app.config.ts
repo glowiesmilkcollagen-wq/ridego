@@ -17,6 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins.map((p) => {
       if (p === 'expo-router') return ['expo-router', { root: routerRoot }] as [string, unknown];
       if (variant === 'rider' && Array.isArray(p) && p[0] === 'expo-location') return ['expo-location', { locationWhenInUsePermission: location }] as [string, unknown];
+      if (variant === 'rider' && Array.isArray(p) && p[0] === 'expo-splash-screen') return ['expo-splash-screen', { ...(p[1] as object), image: './assets/rider/splash-icon.png' }] as [string, unknown];
       return p;
     });
 
@@ -32,7 +33,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: 'com.ajaridego.ridego.rider',
       infoPlist: { ...base.ios?.infoPlist, NSLocationWhenInUseUsageDescription: location },
     },
-    android: { ...base.android, package: 'com.ajaridego.ridego.rider' },
+    icon: './assets/rider/icon.png',
+    android: {
+      ...base.android,
+      package: 'com.ajaridego.ridego.rider',
+      adaptiveIcon: {
+        backgroundColor: '#0F9D58',
+        foregroundImage: './assets/rider/android-icon-foreground.png',
+        backgroundImage: './assets/rider/android-icon-background.png',
+        monochromeImage: './assets/rider/android-icon-monochrome.png',
+      },
+    },
+    web: { ...base.web, favicon: './assets/rider/favicon.png' },
     plugins: withRouterRoot(base.plugins),
   };
 };
