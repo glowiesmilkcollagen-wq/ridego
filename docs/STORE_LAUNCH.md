@@ -20,20 +20,14 @@ Store accounts are **personal** for now (listings show your own name as the sell
 
 ## Your steps, in order
 
-### 1. Make emails reach real customers (needed for "Forgot password")
-Supabase's built-in email only reaches the people on your Supabase team, so customers wouldn't get reset codes.
-Use your Gmail as the sender (free, up to about 500 emails a day):
-
-1. Turn on 2-Step Verification for ridegopabiliapp@gmail.com, then create an **App password** (Google Account → Security → App passwords). Don't share it.
-2. Supabase → **Authentication → Emails → SMTP Settings** → enable custom SMTP:
-   host `smtp.gmail.com`, port `465`, user `ridegopabiliapp@gmail.com`, password = the app password,
-   sender email `ridegopabiliapp@gmail.com`, sender name `RideGo`.
-3. Supabase → **Authentication → Emails → Templates → Reset password**: replace the message body with:
-   ```html
-   <h2>Reset your RideGo password</h2>
-   <p>Your code is: <strong style="font-size:24px">{{ .Token }}</strong></p>
-   <p>Enter it in the app with your new password. If you didn't ask for this, ignore this email.</p>
-   ```
+### 1. Emails to customers (password reset codes) — ✅ done
+Supabase sends its emails through **Brevo** (free, 300 emails a day), because Supabase's built-in email only reaches your own team.
+- Supabase → Authentication → Emails → SMTP Settings: host `smtp-relay.brevo.com`, port `587`, username = the Brevo SMTP login
+  (`…@smtp-brevo.com`), password = a Brevo SMTP key (Brevo → Settings → SMTP & API). Sender `ridegopabiliapp@gmail.com`, name `RideGo`.
+- The "Reset password" email template shows a 6-digit code (`{{ .Token }}`) that customers type into the app.
+- If reset emails stop arriving: check Brevo → Transactional → Logs. SMTP keys stop working after 90 days without any email sent —
+  generate a new one and paste it into Supabase.
+- Later, with your own domain (e.g. ridego.ph), add it in Brevo → Senders, domains, IPs so emails come from `noreply@yourdomain`.
 
 ### 2. Publish the website (privacy policy, terms, account deletion pages)
 On your Mac, in the project folder: `npm run deploy:admin`. It prints a web address, for example `https://ridego--xxxx.expo.app`.
