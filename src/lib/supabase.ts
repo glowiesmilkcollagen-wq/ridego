@@ -13,13 +13,13 @@ const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export const supabaseConfigured = /^https:\/\/.+/.test(url) && anonKey.length > 20;
 
+// While the admin website is pre-rendered at build time there is no browser (no window): skip saved logins then.
+const prerendering = Platform.OS === 'web' && typeof window === 'undefined';
+
 export const supabase = createClient(supabaseConfigured ? url : 'https://not-configured.invalid', supabaseConfigured ? anonKey : 'not-configured', {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
+  auth: prerendering
+    ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    : { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
 });
 
 // Keep the login fresh only while the app is in the foreground (recommended for React Native).

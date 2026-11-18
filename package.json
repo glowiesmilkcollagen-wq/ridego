@@ -40,7 +40,7 @@
     "build:rider:ios": "npx eas-cli@latest build -p ios --profile rider-production",
     "start:admin": "APP_VARIANT=admin expo start --web",
     "build:admin": "APP_VARIANT=admin expo export --platform web --output-dir dist-admin",
-    "deploy:admin": "npm run build:admin && npx eas-cli@latest deploy --export-dir dist-admin",
+    "deploy:admin": "npm run build:admin && npx eas-cli@latest deploy --prod --export-dir dist-admin",
     "test:db": "supabase/tests/run.sh"
   },
   "private": true

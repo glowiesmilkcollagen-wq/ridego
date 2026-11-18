@@ -32,7 +32,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     });
 
   if (variant === 'admin') {
-    return { ...base, name: 'RideGo Admin', scheme: 'ridego-admin', orientation: 'default', plugins: withRouterRoot(base.plugins) };
+    // Static output: every page (e.g. /legal/privacy) gets its own HTML file, so store links open directly.
+    return { ...base, name: 'RideGo Admin', scheme: 'ridego-admin', orientation: 'default', web: { ...base.web, output: 'static' }, plugins: withRouterRoot(base.plugins) };
   }
   return {
     ...base,
