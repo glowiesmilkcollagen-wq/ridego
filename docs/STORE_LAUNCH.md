@@ -29,13 +29,13 @@ Supabase sends its emails through **Brevo** (free, 300 emails a day), because Su
   generate a new one and paste it into Supabase.
 - Later, with your own domain (e.g. ridego.ph), add it in Brevo → Senders, domains, IPs so emails come from `noreply@yourdomain`.
 
-### 2. Publish the website (privacy policy, terms, account deletion pages)
-On your Mac, in the project folder: `npm run deploy:admin`. It prints a web address, for example `https://ridego--xxxx.expo.app`.
-Your store links are then:
-- Privacy policy: `<address>/legal/privacy`
-- Terms: `<address>/legal/terms`
-- Account deletion (Google asks for this): `<address>/legal/delete-account`
-- Support: `mailto:ridegopabiliapp@gmail.com` (or the privacy page)
+### 2. Website (privacy policy, terms, account deletion) — ✅ done
+Live at **https://ridego.expo.app** (republish after changes with `npm run deploy:admin`). Links for the stores:
+- Privacy policy: https://ridego.expo.app/legal/privacy
+- Terms of service: https://ridego.expo.app/legal/terms
+- Account deletion (Google Play asks for this): https://ridego.expo.app/legal/delete-account
+- Support URL: https://ridego.expo.app/legal/privacy (contact email is on every page) and ridegopabiliapp@gmail.com
+- Admin dashboard: https://ridego.expo.app (admin login required)
 
 ### 3. Developer accounts
 - **Apple Developer Program**: developer.apple.com/programs → Enroll as an *Individual* (US$99/year). Needs an Apple ID with two-factor authentication. Approval usually takes 1–2 days.
@@ -144,7 +144,7 @@ These match what the apps actually do (see the privacy policy). No tracking, no 
 ### Google Play — Data safety
 - Data collected: Personal info (name, email, phone), Location (precise), App activity (in-app actions: order history), Other (rider: plate/license number).
 - Shared with third parties: **No** (service providers that process data for you don't count as sharing).
-- Encrypted in transit: **Yes**. Users can request deletion: **Yes** (link: `<address>/legal/delete-account`).
+- Encrypted in transit: **Yes**. Users can request deletion: **Yes** (link: `https://ridego.expo.app/legal/delete-account`).
 - Purpose: App functionality, Account management. Not used for ads.
 
 ### Ratings questionnaires

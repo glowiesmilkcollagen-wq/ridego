@@ -79,7 +79,7 @@ npx eas-cli@latest build -p android --profile preview            # customer app,
 npx eas-cli@latest build -p android --profile rider-preview      # rider app, Android test APK
 npx eas-cli@latest build -p ios --profile production             # customer app for the App Store
 npx eas-cli@latest build -p ios --profile rider-production       # rider app for the App Store
-npm run deploy:admin                                             # admin dashboard website (EAS Hosting)
+npm run deploy:admin                                             # admin dashboard website → https://ridego.expo.app
 ```
 The `.env` values are built into the apps, so build after creating `.env`.
 Stores: Google Play Console (US$25 once) and Apple Developer Program (US$99/year); customer and rider apps are separate listings
