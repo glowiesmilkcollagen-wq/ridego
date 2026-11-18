@@ -16,6 +16,7 @@ Store accounts are **personal** for now (listings show your own name as the sell
 - Forgot password (emailed 6-digit code).
 - App icons and splash screens; location permission explanations.
 - No passenger rides (motorcycle taxi needs LTFRB permits).
+- Push notifications for new jobs and order updates (setup: [`PUSH_NOTIFICATIONS.md`](PUSH_NOTIFICATIONS.md)).
 
 ## Your steps, in order
 
@@ -159,7 +160,7 @@ Answer "yes" to "app shares location" / "users interact" only where the forms as
 ---
 
 ## Before or soon after launch (recommended)
-- **Push notifications**: today riders must keep the app open to see new jobs, and customers see updates only while the app is open. This is the most important next feature.
+- **Push notifications** are built in. Finish the one-time Firebase setup in [`PUSH_NOTIFICATIONS.md`](PUSH_NOTIFICATIONS.md) before the production Android builds.
 - **Online payments** (GCash/Maya via a provider like PayMongo) — needs a registered business.
 - **Business registration (DTI)** if you plan to scale; later you can move the store accounts to an organization.
 - Supabase free plan: fine for launch (500 MB database). A project with no activity for 7 days is paused — a live app won't hit this.

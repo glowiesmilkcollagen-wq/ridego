@@ -5,6 +5,7 @@ import type { Category, Store } from './data';
 import type { LatLng } from './geo';
 import { DEFAULT_PRICES, parsePrices, Prices, Vehicle } from './pricing';
 import { supabase, supabaseConfigured } from './supabase';
+import { unregisterPush } from './push';
 import type { Cargo, Contact, ErrandItem, PaymentMethod, Stop } from './trips';
 
 // ───────────────────────────── Row types (mirror supabase/schema.sql) ─────────────────────────────
@@ -97,6 +98,7 @@ export async function signIn(email: string, password: string) {
   if (error) throw error;
 }
 export async function signOut() {
+  await unregisterPush().catch(() => {});
   await supabase.auth.signOut();
 }
 

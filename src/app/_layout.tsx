@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuthScreen, { NotConfigured } from '@/components/AuthScreen';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { usePushNotifications } from '@/lib/push';
 import { StoreProvider } from '@/lib/store';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
@@ -28,6 +29,7 @@ export default function RootLayout() {
 
 function Gate() {
   const { session, loading } = useAuth();
+  usePushNotifications('customer', !!session);
   if (loading) return <Loading />;
   if (!session) return <AuthScreen title="RideGo" subtitle="Pabili and Pasugo — we buy it, pick it up, and bring it to you." emoji="🛵" />;
   return (

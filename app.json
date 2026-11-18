@@ -56,6 +56,14 @@
         {
           "androidGoogleMapsApiKey": "AIzaSyAbzIu4f9vWp2rxu8iLIU23Ufw1GjX2zkQ"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E5195E",
+          "defaultChannel": "orders"
+        }
       ]
     ],
     "extra": {

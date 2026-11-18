@@ -7,6 +7,7 @@ import AuthScreen, { NotConfigured } from '@/components/AuthScreen';
 import { RiderProvider, useRider } from '@/components/rider/RiderContext';
 import { RegisterScreen, StatusScreen } from '@/components/rider/RiderOnboarding';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { usePushNotifications } from '@/lib/push';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
@@ -31,6 +32,8 @@ export default function RiderRootLayout() {
 function Gate() {
   const { session, loading } = useAuth();
   const { rider, loading: riderLoading, refresh, setRider } = useRider();
+  // Registered even before approval, so the rider hears "You're approved".
+  usePushNotifications('rider', !!session && !!rider);
   if (loading || (session && riderLoading)) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}><ActivityIndicator color={colors.ride} size="large" /></View>;
   }

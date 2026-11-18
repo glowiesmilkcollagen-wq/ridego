@@ -239,3 +239,54 @@ select pg_temp.check((select customer_id is null and customer_name = 'Deleted us
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
 select pg_temp.expect_error($$select delete_my_account()$$, 'Admin accounts');
 reset role;
+
+\echo '20. push notifications'
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000b1', 'pushrider@x.test', '{"full_name":"Paolo Rivera"}'),
+  ('00000000-0000-0000-0000-0000000000b2', 'pushcust@x.test', '{"full_name":"Liza Gomez"}');
+create temp view pushes as select m ->> 'to' as "to", m ->> 'title' as title, m ->> 'body' as body, m ->> 'channelId' as channel
+  from net.sent, jsonb_array_elements(body) m;
+grant select on pushes to authenticated;
+-- Tokens: only valid Expo tokens, saved for the signed-in user.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select pg_temp.expect_error($$select register_push_token('hello', 'customer')$$, 'Invalid push token');
+select register_push_token('ExponentPushToken[cust-b2]', 'customer');
+select pg_temp.expect_error($$select * from push_tokens$$, 'permission denied');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select rider_register('Paolo Rivera', '0918', 'moto', 'PUSH 1', 'L-1');
+select register_push_token('ExponentPushToken[rider-b1]', 'rider');
+-- Admin approves: the rider is told.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+update riders set status = 'approved' where id = '00000000-0000-0000-0000-0000000000b1';
+reset role;
+select pg_temp.check(exists (select 1 from pushes where "to" = 'ExponentPushToken[rider-b1]' and title like 'You''re approved%'), 'rider told about approval');
+-- Rider goes online near Makati; a new order nearby alerts them on the "jobs" channel.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select rider_set_online(true);
+select rider_update_location(14.556, 121.025);
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select id as push_order from place_order('{"kind":"pasugo","cargo":"document","pickup":{"name":"Office","lat":14.5547,"lng":121.0244},"dropoff":{"name":"Home","lat":14.5866,"lng":121.0614},"km":6,"description":"folder"}') \gset
+reset role;
+select pg_temp.check(exists (select 1 from pushes where "to" = 'ExponentPushToken[rider-b1]' and title like 'New pasugo job%' and channel = 'jobs'), 'nearby online rider gets the new job');
+-- A far-away order (Cebu) doesn't alert this rider.
+delete from net.sent;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+select place_order('{"kind":"pasugo","cargo":"parcel","pickup":{"name":"Cebu office","lat":10.3157,"lng":123.8854},"dropoff":{"name":"Cebu home","lat":10.33,"lng":123.90},"km":3,"description":"bag"}');
+reset role;
+select pg_temp.check(not exists (select 1 from pushes where "to" = 'ExponentPushToken[rider-b1]'), 'far-away rider is not alerted');
+-- Rider accepts: the customer hears "Rider found" with the rider's first name.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select accept_order(:'push_order');
+reset role;
+select pg_temp.check(exists (select 1 from pushes where "to" = 'ExponentPushToken[cust-b2]' and title like 'Rider found%' and body like 'Paolo is heading to Office%'), 'customer told rider found');
+-- Customer cancels: the rider is told.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select cancel_order(:'push_order');
+reset role;
+select pg_temp.check(exists (select 1 from pushes where "to" = 'ExponentPushToken[rider-b1]' and title = 'Job cancelled'), 'rider told about cancellation');
+-- Logging out removes the token; nothing is sent to it afterwards.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select unregister_push_token('ExponentPushToken[cust-b2]');
+reset role;
+select pg_temp.check(not exists (select 1 from push_tokens where token = 'ExponentPushToken[cust-b2]'), 'token removed on logout');

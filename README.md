@@ -125,7 +125,7 @@ Run against any Postgres 15+: `npm run test:db -- "-h localhost -U postgres"`.
 ## Still to do before a public launch
 - **Online payments** (GCash/Maya/cards) via a provider such as PayMongo — needs a business account.
 - **Phone-number (SMS) login** instead of email — needs an SMS provider in Supabase (e.g. Twilio).
-- **Push notifications** for new jobs and order updates; **background location** for riders (today the rider app must stay open).
+- **Background location** for riders (today the rider app must be open to share the rider's position; new jobs arrive as push notifications — see [`docs/PUSH_NOTIFICATIONS.md`](docs/PUSH_NOTIFICATIONS.md)).
 - **Receipt and prescription photos**; **rider document uploads** (license, OR/CR) for approval.
 - **Routing**: add the Google server key (section 4); until then distances use the free OSRM demo server.
 - **Legal**: passenger rides were removed (motorcycle taxis need LTFRB permits). Check courier/delivery rules (DTI/DOTr) for your area.

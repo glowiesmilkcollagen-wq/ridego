@@ -651,3 +651,137 @@ begin
 end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- ============================================================================
+-- Push notifications (Expo push service). The apps register their device token;
+-- triggers on orders and riders send the alerts through pg_net (asynchronous web requests).
+-- ============================================================================
+do $$ begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_net') then
+    create extension if not exists pg_net with schema extensions;
+  end if;
+end $$;
+
+create table if not exists public.push_tokens (
+  token text primary key,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  app text not null check (app in ('customer', 'rider')),
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_tokens_user_idx on public.push_tokens (user_id, app);
+alter table public.push_tokens enable row level security;  -- no policies: only the functions below touch it
+revoke all on public.push_tokens from anon, authenticated;
+
+create or replace function public.register_push_token(p_token text, p_app text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Please log in first'; end if;
+  if p_token !~ '^Expo(nent)?PushToken\[[A-Za-z0-9_-]+\]$' then raise exception 'Invalid push token'; end if;
+  if p_app not in ('customer', 'rider') then raise exception 'Invalid app'; end if;
+  insert into public.push_tokens (token, user_id, app) values (p_token, auth.uid(), p_app)
+  on conflict (token) do update set user_id = excluded.user_id, app = excluded.app, updated_at = now();
+end $$;
+
+create or replace function public.unregister_push_token(p_token text) returns void
+language sql security definer set search_path = public as $$
+  delete from public.push_tokens where token = p_token and user_id = auth.uid();
+$$;
+revoke execute on function public.register_push_token(text, text), public.unregister_push_token(text) from public, anon;
+grant execute on function public.register_push_token(text, text), public.unregister_push_token(text) to authenticated;
+
+-- Sends messages to Expo in batches of 100. Never raises: a push problem must not block an order.
+create or replace function private.send_push(messages jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare i int := 0; n int := coalesce(jsonb_array_length(messages), 0);
+begin
+  while i < n loop
+    perform net.http_post(
+      url := 'https://exp.host/--/api/v2/push/send',
+      body := (select jsonb_agg(m) from (select m from jsonb_array_elements(messages) with ordinality t(m, k) where k > i and k <= i + 100) s),
+      headers := '{"Content-Type": "application/json", "Accept": "application/json"}'::jsonb
+    );
+    i := i + 100;
+  end loop;
+exception when others then
+  raise warning 'push not sent: %', sqlerrm;
+end $$;
+
+-- One message per device of a user in one app.
+create or replace function private.push_to(p_user uuid, p_app text, p_title text, p_body text, p_data jsonb, p_channel text default 'orders')
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object('to', token, 'title', p_title, 'body', p_body, 'data', p_data,
+    'sound', 'default', 'priority', 'high', 'channelId', p_channel)), '[]'::jsonb)
+  from public.push_tokens where user_id = p_user and app = p_app;
+$$;
+
+create or replace function private.orders_push() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  msgs jsonb := '[]'::jsonb;
+  d jsonb := jsonb_build_object('orderId', new.id, 'status', new.status);
+  rider_name text;
+  what text := case when new.kind = 'pabili' then 'pabili' else 'pasugo' end;
+begin
+  if tg_op = 'INSERT' then
+    if new.status = 'searching' then
+      -- New job: approved riders who are online, near the pickup (or whose location we don't know yet).
+      select coalesce(jsonb_agg(jsonb_build_object('to', t.token,
+          'title', format('New %s job · ₱%s', what, round(new.rider_earning)),
+          'body', format('%s → %s · %s km', new.pickup_name, new.dropoff_name, round(new.km, 1)),
+          'data', d || '{"type":"job"}', 'sound', 'default', 'priority', 'high', 'channelId', 'jobs')), '[]'::jsonb)
+        into msgs
+      from public.riders r join public.push_tokens t on t.user_id = r.id and t.app = 'rider'
+      where r.status = 'approved' and r.online
+        and (r.lat is null or public.km_between(r.lat, r.lng, new.pickup_lat, new.pickup_lng) <= 15);
+    end if;
+  elsif new.status is distinct from old.status then
+    select split_part(full_name, ' ', 1) into rider_name from public.profiles where id = new.rider_id;
+    rider_name := coalesce(nullif(rider_name, ''), 'Your rider');
+    msgs := case new.status
+      when 'accepted' then private.push_to(new.customer_id, 'customer', 'Rider found 🛵', format('%s is heading to %s.', rider_name, new.pickup_name), d)
+      when 'at_pickup' then private.push_to(new.customer_id, 'customer', format('%s is at %s', rider_name, new.pickup_name),
+        case when new.kind = 'pabili' then 'Buying your items now. Keep your phone handy.' else 'Collecting the item now.' end, d)
+      when 'picked_up' then private.push_to(new.customer_id, 'customer', 'On the way to you',
+        case when new.kind = 'pabili' then 'Prepare the cash for the items (receipt) and the delivery fee.' else 'Heading to the drop-off point.' end, d)
+      when 'delivered' then private.push_to(new.customer_id, 'customer', 'Delivered ✅', 'Thanks for using RideGo! Tap to rate your rider.', d)
+      when 'searching' then private.push_to(new.customer_id, 'customer', 'Finding another rider', 'Your rider couldn''t take this order. We''re matching you with another rider.', d)
+      else '[]'::jsonb
+    end;
+    if new.status = 'cancelled' then
+      if new.cancelled_by = 'admin' then
+        msgs := msgs || private.push_to(new.customer_id, 'customer', 'Order cancelled', 'RideGo support cancelled your order. No charge was made.', d);
+      end if;
+      if old.rider_id is not null then
+        msgs := msgs || private.push_to(old.rider_id, 'rider', 'Job cancelled',
+          format('Order %s was cancelled by the %s. You can stop this job.', new.code, case when new.cancelled_by = 'admin' then 'RideGo team' else 'customer' end), d);
+      end if;
+    end if;
+  end if;
+  perform private.send_push(msgs);
+  return new;
+exception when others then
+  raise warning 'orders_push failed: %', sqlerrm;
+  return new;
+end $$;
+drop trigger if exists orders_push on public.orders;
+create trigger orders_push after insert or update of status on public.orders
+  for each row execute function private.orders_push();
+
+create or replace function private.riders_push() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.status is distinct from old.status then
+    perform private.send_push(case new.status
+      when 'approved' then private.push_to(new.id, 'rider', 'You''re approved! 🎉', 'Go online in RideGo Rider to start receiving jobs.', '{"type":"approved"}')
+      when 'suspended' then private.push_to(new.id, 'rider', 'Account suspended', 'Your rider account was suspended. Contact ridegopabiliapp@gmail.com.', '{"type":"suspended"}')
+      else '[]'::jsonb end);
+  end if;
+  return new;
+exception when others then
+  raise warning 'riders_push failed: %', sqlerrm;
+  return new;
+end $$;
+drop trigger if exists riders_push on public.riders;
+create trigger riders_push after update of status on public.riders
+  for each row execute function private.riders_push();
+revoke execute on function private.send_push(jsonb), private.push_to(uuid, text, text, text, jsonb, text) from public, anon, authenticated;

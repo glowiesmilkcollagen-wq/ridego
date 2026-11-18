@@ -31,6 +31,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
         'Orders: what you ask a rider to buy or pick up, store names, pickup and drop-off places and their map location, contact names and numbers you enter for a pickup or receiver, fees, promo codes, receipt amounts, ratings and order times.',
         'Location: while you use the app, your location to set your address and show nearby stores (only if you allow it). Riders: their location while they are online, so customers can follow their order.',
         'Riders also give their motorcycle plate number and driver’s license number for approval.',
+        'Notifications: if you allow them, a notification token for your phone, so we can alert you about your orders (riders: new jobs). Logging out removes it.',
         'We do not collect payment card details, contacts, photos or advertising IDs, and we do not show ads.',
       ],
     },
@@ -44,7 +45,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
       heading: 'Who sees it',
       body: [
         'The rider who accepts your order sees your first name, mobile number, addresses and the order details. You see your rider’s name, mobile number, plate number and location during the order.',
-        'Service providers that run the app for us: Supabase (database and login, servers in Singapore), Google Maps Platform (road distances and maps; it receives map coordinates), and Expo (app builds and updates).',
+        'Service providers that run the app for us: Supabase (database and login, servers in Singapore), Google Maps Platform (road distances and maps; it receives map coordinates), Expo and Google Firebase / Apple (delivering notifications), and Expo (app builds and updates).',
         'We do not sell your data. We share it with authorities only when the law requires.',
       ],
     },
