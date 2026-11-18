@@ -102,6 +102,9 @@ It uses Google (motorcycle routes, car roads if none) when the secret is set, ot
 answers for 30 days in `route_cache` so the same trip doesn't cost twice. Only signed-in users can call it, and only for points in the Philippines.
 If the function can't be reached, the apps fall back to OSRM, then to a straight-line estimate. No app update is needed when you add the key.
 
+## Publishing to the App Store and Google Play
+Step-by-step guide, store texts and privacy-form answers: [`docs/STORE_LAUNCH.md`](docs/STORE_LAUNCH.md).
+
 ## Project layout
 
 ```
