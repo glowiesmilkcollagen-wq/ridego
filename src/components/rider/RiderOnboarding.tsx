@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui';
+import { AccountActions } from '@/components/AccountActions';
 import { Rider, registerRider, signOut } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { VEHICLE_LABEL } from '@/lib/pricing';
@@ -51,6 +52,7 @@ export function RegisterScreen({ onDone }: { onDone: (r: Rider) => void }) {
           <Text style={styles.subtitle}>Tell us about you and your motorcycle. RideGo reviews every application before you can take jobs.</Text>
           <RiderForm onDone={onDone} />
           <Button title="Log out" variant="ghost" color={colors.muted} onPress={signOut} />
+          <AccountActions appName="RideGo Rider" />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -60,8 +62,8 @@ export function RegisterScreen({ onDone }: { onDone: (r: Rider) => void }) {
 export function StatusScreen({ rider, onRefresh }: { rider: Rider; onRefresh: () => void }) {
   const pending = rider.status === 'pending';
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center' }}>
-      <View style={styles.wrap}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <ScrollView contentContainerStyle={styles.wrap}>
         <Text style={{ fontSize: 48, textAlign: 'center' }}>{pending ? '⏳' : '⛔'}</Text>
         <Text style={styles.title}>{pending ? 'Application received' : 'Account suspended'}</Text>
         <Text style={styles.subtitle}>
@@ -71,7 +73,8 @@ export function StatusScreen({ rider, onRefresh }: { rider: Rider; onRefresh: ()
         </Text>
         <Button title="Check again" color={colors.ride} onPress={onRefresh} />
         <Button title="Log out" variant="ghost" color={colors.muted} onPress={signOut} />
-      </View>
+        <AccountActions appName="RideGo Rider" />
+      </ScrollView>
     </SafeAreaView>
   );
 }

@@ -100,6 +100,26 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+/** Emails a 6-digit password reset code (the Supabase "Reset password" email template must include {{ .Token }}). */
+export async function sendPasswordResetCode(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+  if (error) throw error;
+}
+/** Checks the emailed code and sets the new password (this also logs the user in). */
+export async function resetPasswordWithCode(email: string, code: string, newPassword: string) {
+  if (newPassword.length < 6) throw new Error('Password should be at least 6 characters.');
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'recovery' });
+  if (error) throw new Error(/expired|invalid/i.test(error.message) ? 'That code is wrong or has expired. Request a new one.' : error.message);
+  const { error: e2 } = await supabase.auth.updateUser({ password: newPassword });
+  if (e2) throw e2;
+}
+
+/** Permanently deletes the signed-in user's account (server checks for open orders and rider balances), then logs out. */
+export async function deleteMyAccount() {
+  must(await supabase.rpc('delete_my_account'));
+  await supabase.auth.signOut({ scope: 'local' });
+}
+
 type LiveOpts = {
   /** Realtime: reload when rows of this table change (rows the user may see, matching `filter`). */
   table?: string;

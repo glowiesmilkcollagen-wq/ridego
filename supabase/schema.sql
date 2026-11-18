@@ -604,3 +604,50 @@ create table if not exists public.route_cache (
 alter table public.route_cache enable row level security;
 revoke all on public.route_cache from anon, authenticated;
 create index if not exists route_cache_created_idx on public.route_cache (created_at);
+
+-- ============================================================================
+-- Account deletion (required by the App Store and Google Play).
+-- The login and profile are deleted. Orders and money records stay for accounting,
+-- but lose the link to the person and their names, phone numbers and exact addresses.
+-- ============================================================================
+alter table public.orders alter column customer_id drop not null;
+alter table public.orders drop constraint if exists orders_customer_id_fkey;
+alter table public.orders add constraint orders_customer_id_fkey foreign key (customer_id) references public.profiles (id) on delete set null;
+alter table public.orders drop constraint if exists orders_rider_id_fkey;
+alter table public.orders add constraint orders_rider_id_fkey foreign key (rider_id) references public.riders (id) on delete set null;
+alter table public.rider_transactions alter column rider_id drop not null;
+alter table public.rider_transactions drop constraint if exists rider_transactions_rider_id_fkey;
+alter table public.rider_transactions add constraint rider_transactions_rider_id_fkey foreign key (rider_id) references public.riders (id) on delete set null;
+alter table public.rider_transactions drop constraint if exists rider_transactions_created_by_fkey;
+alter table public.rider_transactions add constraint rider_transactions_created_by_fkey foreign key (created_by) references public.profiles (id) on delete set null;
+
+create or replace function public.delete_my_account() returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  me public.profiles;
+  bal numeric;
+begin
+  select * into me from public.profiles where id = uid;
+  if not found then raise exception 'Please log in first'; end if;
+  if me.role = 'admin' then raise exception 'Admin accounts can''t be deleted from the app. Remove the admin role first.'; end if;
+  if exists (select 1 from public.orders where (customer_id = uid or rider_id = uid) and status in ('searching', 'accepted', 'at_pickup', 'picked_up')) then
+    raise exception 'Finish or cancel your current order first';
+  end if;
+  if exists (select 1 from public.riders where id = uid) then
+    bal := public.rider_balance(uid);
+    if abs(coalesce(bal, 0)) >= 1 then
+      raise exception 'Settle your cash balance with RideGo first (₱%). Contact ridegopabiliapp@gmail.com.', round(abs(bal));
+    end if;
+  end if;
+
+  -- Keep the order for accounting; remove what identifies the customer.
+  update public.orders set
+    customer_name = 'Deleted user', dropoff_name = 'Removed', note = null, sender = null, receiver = null, path = null,
+    dropoff_lat = round(dropoff_lat::numeric, 2), dropoff_lng = round(dropoff_lng::numeric, 2)
+  where customer_id = uid;
+
+  delete from auth.users where id = uid;  -- removes the profile and rider record too
+end $$;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

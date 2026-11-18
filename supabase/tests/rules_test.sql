@@ -221,3 +221,21 @@ select pg_temp.expect_error($$select public.place_order('{}')$$, 'permission den
 reset role;
 
 \echo 'ALL RULE TESTS PASSED'
+
+\echo '19. account deletion'
+-- A fresh customer with one finished order deletes their account.
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d1', 'del@x.test');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000d1');
+select id as del_order from place_order('{"kind":"pasugo","pickup":{"name":"Office","lat":14.5547,"lng":121.0244},"dropoff":{"name":"My house, 12 Rizal St","lat":14.5866,"lng":121.0614},"km":6,"description":"folder","sender":{"name":"Ana","phone":"0917"}}') \gset
+select pg_temp.expect_error($$select delete_my_account()$$, 'current order');
+select cancel_order(:'del_order');
+select delete_my_account();
+reset role;
+select pg_temp.check(not exists (select 1 from auth.users where id = '00000000-0000-0000-0000-0000000000d1'), 'login deleted');
+select pg_temp.check(not exists (select 1 from public.profiles where id = '00000000-0000-0000-0000-0000000000d1'), 'profile deleted');
+select pg_temp.check((select customer_id is null and customer_name = 'Deleted user' and dropoff_name = 'Removed' and sender is null from public.orders where id = :'del_order'), 'order kept but anonymized');
+-- Admins can't delete themselves from the app.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+select pg_temp.expect_error($$select delete_my_account()$$, 'Admin accounts');
+reset role;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AccountActions } from '@/components/AccountActions';
 import { useRider } from '@/components/rider/RiderContext';
 import { RiderForm } from '@/components/rider/RiderOnboarding';
 import { Button, Card, Row, SectionTitle } from '@/components/ui';
@@ -46,6 +47,8 @@ export default function Profile() {
           <Row label="Average rating" value={`${rating}${rated.length ? ` ★ (${rated.length})` : ''}`} />
           <Row label="Total earned" value={peso(all.earned)} bold />
         </Card>
+
+        <AccountActions appName="RideGo Rider" />
 
         <Card>
           <SectionTitle>About</SectionTitle>

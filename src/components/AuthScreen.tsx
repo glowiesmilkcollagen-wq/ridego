@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signIn, signUp } from '@/lib/api';
+import { resetPasswordWithCode, sendPasswordResetCode, signIn, signUp } from '@/lib/api';
 import { errorText } from '@/lib/supabase';
 import { colors, radius } from '@/lib/theme';
+import { useLegal } from './LegalModal';
 import { Button } from './ui';
 
 /** Email + password login and sign-up, shared by the customer and rider apps. */
 export default function AuthScreen({ title, subtitle, emoji, color = colors.primary, allowSignUp = true }: {
   title: string; subtitle: string; emoji: string; color?: string; allowSignUp?: boolean;
 }) {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [info, setInfo] = useState('');
+  const [openLegal, legal] = useLegal();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -20,6 +25,7 @@ export default function AuthScreen({ title, subtitle, emoji, color = colors.prim
 
   const submit = async () => {
     setMessage('');
+    if (mode === 'reset') return reset();
     if (!email.trim() || !password) return setMessage('Enter your email and password.');
     if (mode === 'signup' && !name.trim()) return setMessage('Enter your name.');
     setBusy(true);
@@ -33,6 +39,28 @@ export default function AuthScreen({ title, subtitle, emoji, color = colors.prim
     }
   };
 
+  // Forgot password: email a 6-digit code, then enter it with a new password.
+  const reset = async () => {
+    setMessage(''); setInfo('');
+    if (!email.trim()) return setMessage('Enter the email of your account.');
+    setBusy(true);
+    try {
+      if (!codeSent) {
+        await sendPasswordResetCode(email);
+        setCodeSent(true);
+        setInfo(`We sent a 6-digit code to ${email.trim()}. Check your inbox (and spam folder).`);
+      } else {
+        if (!code.trim() || !password) { setMessage('Enter the code and a new password.'); return; }
+        await resetPasswordWithCode(email, code, password);
+      }
+    } catch (e) {
+      setMessage(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const switchMode = (m: typeof mode) => { setMode(m); setMessage(''); setInfo(''); setCodeSent(false); setCode(''); setPassword(''); };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -41,9 +69,9 @@ export default function AuthScreen({ title, subtitle, emoji, color = colors.prim
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
 
-          {allowSignUp && <View style={styles.tabs}>
+          {allowSignUp && mode !== 'reset' && <View style={styles.tabs}>
             {(['login', 'signup'] as const).map((m) => (
-              <Pressable key={m} onPress={() => { setMode(m); setMessage(''); }} style={[styles.tab, mode === m && { backgroundColor: '#fff' }]}>
+              <Pressable key={m} onPress={() => switchMode(m)} style={[styles.tab, mode === m && { backgroundColor: '#fff' }]}>
                 <Text style={{ fontWeight: '700', color: mode === m ? colors.text : colors.muted }}>{m === 'login' ? 'Log in' : 'Create account'}</Text>
               </Pressable>
             ))}
@@ -55,11 +83,37 @@ export default function AuthScreen({ title, subtitle, emoji, color = colors.prim
               <TextInput value={phone} onChangeText={setPhone} placeholder="Mobile number" keyboardType="phone-pad" placeholderTextColor={colors.muted} style={styles.input} autoComplete="tel" />
             </>
           )}
-          <TextInput value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholderTextColor={colors.muted} style={styles.input} />
-          <TextInput value={password} onChangeText={setPassword} placeholder="Password (at least 6 characters)" secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholderTextColor={colors.muted} style={styles.input} onSubmitEditing={submit} />
+          {mode === 'reset' && <Text style={[styles.h2]}>Reset your password</Text>}
+          <TextInput value={email} onChangeText={setEmail} editable={!(mode === 'reset' && codeSent)} placeholder="Email" autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholderTextColor={colors.muted} style={styles.input} />
+          {mode === 'reset' && codeSent && (
+            <TextInput value={code} onChangeText={setCode} placeholder="6-digit code from the email" keyboardType="number-pad" autoComplete="one-time-code" maxLength={10} placeholderTextColor={colors.muted} style={styles.input} />
+          )}
+          {(mode !== 'reset' || codeSent) && (
+            <TextInput value={password} onChangeText={setPassword} placeholder={mode === 'reset' ? 'New password (at least 6 characters)' : 'Password (at least 6 characters)'} secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholderTextColor={colors.muted} style={styles.input} onSubmitEditing={submit} />
+          )}
 
+          {info ? <Text style={styles.info}>{info}</Text> : null}
           {message ? <Text style={styles.message}>{message}</Text> : null}
-          <Button title={mode === 'login' ? 'Log in' : 'Create account'} onPress={submit} loading={busy} color={color} style={{ marginTop: 6 }} />
+          <Button
+            title={mode === 'login' ? 'Log in' : mode === 'signup' ? 'Create account' : codeSent ? 'Set new password' : 'Email me a code'}
+            onPress={submit} loading={busy} color={color} style={{ marginTop: 6 }}
+          />
+          {mode === 'login' && (
+            <Pressable onPress={() => switchMode('reset')} style={{ alignSelf: 'center', padding: 6 }}>
+              <Text style={{ color, fontWeight: '700' }}>Forgot password?</Text>
+            </Pressable>
+          )}
+          {mode === 'reset' && (
+            <Pressable onPress={() => switchMode('login')} style={{ alignSelf: 'center', padding: 6 }}>
+              <Text style={{ color, fontWeight: '700' }}>Back to log in</Text>
+            </Pressable>
+          )}
+          <Text style={styles.legal}>
+            {mode === 'signup' ? 'By creating an account you agree to our ' : 'See our '}
+            <Text style={styles.link} onPress={() => openLegal('terms')}>Terms of service</Text> and{' '}
+            <Text style={styles.link} onPress={() => openLegal('privacy')}>Privacy policy</Text>.
+          </Text>
+          {legal}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -87,4 +141,8 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.sm },
   input: { borderWidth: 1, borderColor: colors.border, backgroundColor: '#fff', borderRadius: 10, padding: 14, fontSize: 16, color: colors.text },
   message: { color: colors.danger, textAlign: 'center' },
+  info: { color: colors.text, textAlign: 'center', lineHeight: 20 },
+  h2: { fontSize: 18, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  legal: { color: colors.muted, textAlign: 'center', fontSize: 13, lineHeight: 19, marginTop: 8 },
+  link: { color: colors.text, textDecorationLine: 'underline', fontWeight: '600' },
 });

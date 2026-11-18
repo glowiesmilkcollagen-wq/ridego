@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showBecomeRider } from '@/components/becomeRider';
 import { Button, Card, SectionTitle } from '@/components/ui';
+import { AccountActions } from '@/components/AccountActions';
 import { signOut, updateProfile, useMyOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useStore } from '@/lib/store';
@@ -64,10 +65,12 @@ export default function Account() {
           <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={showBecomeRider} last />
         </Card>
 
+        <AccountActions appName="RideGo" />
+
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo v2.0 — Pabili (we buy food, medicine, groceries or anything) and Pasugo (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
+            Pabili (we buy food, medicine, groceries or anything) and Pasugo (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
           </Text>
         </Card>
 

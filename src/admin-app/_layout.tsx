@@ -35,6 +35,8 @@ function Gate() {
   const { session, loading, profile } = useAuth();
   const { width } = useWindowDimensions();
   const path = usePathname();
+  // Privacy policy, terms and account-deletion pages are public (store listings link to them).
+  if (path.startsWith('/legal')) return <Slot />;
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.text} size="large" /></View>;
   if (!session) return <AuthScreen title="RideGo Admin" subtitle="Sign in with an admin account." emoji="🛠️" color={colors.text} allowSignUp={false} />;
   if (profile?.role !== 'admin') {
