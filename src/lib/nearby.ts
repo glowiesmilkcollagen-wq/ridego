@@ -31,12 +31,25 @@ const LABEL: Record<string, string> = {
 };
 
 /** A store from Google Maps, shaped like Pabili's own stores. It is ordered like a "store not on the list". */
+/** Google has hundreds of specific types (noodle_shop, asian_restaurant…): sort them by keywords. */
+function categoryOf(type: string): Category {
+  if (TYPE_CATEGORY[type]) return TYPE_CATEGORY[type];
+  if (/pharm|drug|medical_supply|health/.test(type)) return 'Medicine';
+  if (/restaurant|food|cafe|coffee|bakery|meal|noodle|donut|ice_cream|sandwich|tea|juice|dessert|pizza|burger|chicken|diner|steak|seafood|ramen|sushi|bar|grill|eatery|deli|confection/.test(type)) return 'Food';
+  if (/grocery|supermarket|market|butcher|fruit|vegetable/.test(type)) return 'Groceries';
+  if (/hardware|home_improvement|building|paint|electrical/.test(type)) return 'Hardware';
+  if (/florist|flower|gift/.test(type)) return 'Gifts';
+  if (/pet|veterinar/.test(type)) return 'Pets';
+  return 'Convenience';
+}
+const humanize = (type: string) => (type ? type.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Store');
+
 function toStore(p: Place): Store {
-  const category = TYPE_CATEGORY[p.type] ?? 'Convenience';
+  const category = categoryOf(p.type);
   return {
     id: `g:${p.id}`,
     name: p.name,
-    tagline: LABEL[p.type] ?? 'Store',
+    tagline: LABEL[p.type] ?? humanize(p.type),
     category,
     emoji: TYPE_EMOJI[p.type] ?? CATEGORIES.find((c) => c.key === category)?.emoji ?? '🏪',
     tint: TINT[category],
