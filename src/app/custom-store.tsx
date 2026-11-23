@@ -15,7 +15,7 @@ import { MAX_STORES, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 /**
- * A store that is not in RideGo's list (a sari-sari store, a small shop): the customer types its name and
+ * A store that is not in Pabili's list (a sari-sari store, a small shop): the customer types its name and
  * directions, and pins it on the map so the app can work out the route and fee.
  * mode=start: begin a pabili order with it · mode=add: add it to the order being drafted.
  */

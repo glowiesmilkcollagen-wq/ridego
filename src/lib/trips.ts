@@ -39,7 +39,7 @@ export function statusText(o: Pick<Order, 'kind' | 'status' | 'cargo' | 'cancell
     case 'delivered': return pabili
       ? { label: 'Delivered', detail: 'Paid the rider for the items and the delivery fee' }
       : { label: 'Delivered', detail: 'Handed over at the drop-off point' };
-    case 'cancelled': return { label: 'Cancelled', detail: o.cancelled_by === 'admin' ? 'Cancelled by RideGo support. No charge was made.' : 'No charge was made.' };
+    case 'cancelled': return { label: 'Cancelled', detail: o.cancelled_by === 'admin' ? 'Cancelled by Pabili support. No charge was made.' : 'No charge was made.' };
   }
 }
 

@@ -25,10 +25,10 @@ Nothing to prepare. When you run `eas build -p ios`, answer **Yes** when EAS ask
 
 ### Android (both apps) — Firebase
 Android delivers push through Google's Firebase (free).
-1. Go to **console.firebase.google.com** → **Create a project** → choose your existing Google Cloud project **RideGo**
+1. Go to **console.firebase.google.com** → **Create a project** → choose your existing Google Cloud project **Pabili**
    (Analytics: not needed).
-2. **Add app → Android**, package name `com.ajaridego.ridego`, nickname "RideGo" → **Register app** → skip the remaining steps.
-3. **Add app → Android** again, package name `com.ajaridego.ridego.rider`, nickname "RideGo Rider".
+2. **Add app → Android**, package name `com.ajaridego.ridego`, nickname "Pabili" → **Register app** → skip the remaining steps.
+3. **Add app → Android** again, package name `com.ajaridego.ridego.rider`, nickname "Pabili Rider".
 4. **Project settings (⚙️) → General → Your apps** → download **google-services.json** (one file now covers both apps).
    Send it to Claude (or put it in the project folder as `google-services.json`). It is not secret.
 5. **Project settings → Service accounts → Generate new private key** → a `.json` key downloads. **This one is secret**:

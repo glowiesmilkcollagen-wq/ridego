@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RideGo",
+    "name": "Pabili",
     "slug": "ridego",
     "scheme": "ridego",
     "version": "1.0.0",
@@ -11,7 +11,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ajaridego.ridego",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "RideGo uses your location to set your pickup point and delivery address.",
+        "NSLocationWhenInUseUsageDescription": "Pabili uses your location to set your pickup point and delivery address.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -48,7 +48,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "RideGo uses your location to set your pickup point and delivery address."
+          "locationWhenInUsePermission": "Pabili uses your location to set your pickup point and delivery address."
         }
       ],
       [

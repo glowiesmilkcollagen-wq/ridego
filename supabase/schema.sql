@@ -637,7 +637,7 @@ begin
   if exists (select 1 from public.riders where id = uid) then
     bal := public.rider_balance(uid);
     if abs(coalesce(bal, 0)) >= 1 then
-      raise exception 'Settle your cash balance with RideGo first (₱%). Contact ridegopabiliapp@gmail.com.', round(abs(bal));
+      raise exception 'Settle your cash balance with Pabili first (₱%). Contact ridegopabiliapp@gmail.com.', round(abs(bal));
     end if;
   end if;
 
@@ -757,17 +757,17 @@ begin
         case when new.kind = 'pabili' then 'Buying your items now. Keep your phone handy.' else 'Collecting the item now.' end, d)
       when 'picked_up' then private.push_to(new.customer_id, 'customer', 'On the way to you',
         case when new.kind = 'pabili' then 'Prepare the cash for the items (receipt) and the delivery fee.' else 'Heading to the drop-off point.' end, d)
-      when 'delivered' then private.push_to(new.customer_id, 'customer', 'Delivered ✅', 'Thanks for using RideGo! Tap to rate your rider.', d)
+      when 'delivered' then private.push_to(new.customer_id, 'customer', 'Delivered ✅', 'Thanks for using Pabili! Tap to rate your rider.', d)
       when 'searching' then private.push_to(new.customer_id, 'customer', 'Finding another rider', 'Your rider couldn''t take this order. We''re matching you with another rider.', d)
       else '[]'::jsonb
     end;
     if new.status = 'cancelled' then
       if new.cancelled_by = 'admin' then
-        msgs := msgs || private.push_to(new.customer_id, 'customer', 'Order cancelled', 'RideGo support cancelled your order. No charge was made.', d);
+        msgs := msgs || private.push_to(new.customer_id, 'customer', 'Order cancelled', 'Pabili support cancelled your order. No charge was made.', d);
       end if;
       if old.rider_id is not null then
         msgs := msgs || private.push_to(old.rider_id, 'rider', 'Job cancelled',
-          format('Order %s was cancelled by the %s. You can stop this job.', new.code, case when new.cancelled_by = 'admin' then 'RideGo team' else 'customer' end), d);
+          format('Order %s was cancelled by the %s. You can stop this job.', new.code, case when new.cancelled_by = 'admin' then 'Pabili team' else 'customer' end), d);
       end if;
     end if;
   end if;
@@ -786,7 +786,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if new.status is distinct from old.status then
     perform private.send_push(case new.status
-      when 'approved' then private.push_to(new.id, 'rider', 'You''re approved! 🎉', 'Go online in RideGo Rider to start receiving jobs.', '{"type":"approved"}')
+      when 'approved' then private.push_to(new.id, 'rider', 'You''re approved! 🎉', 'Go online in Pabili Rider to start receiving jobs.', '{"type":"approved"}')
       when 'suspended' then private.push_to(new.id, 'rider', 'Account suspended', 'Your rider account was suspended. Contact ridegopabiliapp@gmail.com.', '{"type":"suspended"}')
       else '[]'::jsonb end);
   end if;

@@ -4,8 +4,8 @@
  * Not legal advice: have a lawyer review before a big launch. Update UPDATED when you change the text.
  */
 export const SUPPORT_EMAIL = 'ridegopabiliapp@gmail.com';
-export const OPERATOR = 'RideGo';
-export const UPDATED = '18 November 2026';
+export const OPERATOR = 'Pabili';
+export const UPDATED = '24 November 2026';
 
 export type LegalDoc = 'privacy' | 'terms' | 'delete-account';
 export type Section = { heading: string; body: string[] };
@@ -21,7 +21,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'Who we are',
       body: [
-        `${OPERATOR} runs the RideGo app (customers) and the RideGo Rider app (riders) in the Philippines. We follow the Data Privacy Act of 2012 (Republic Act 10173). Questions or requests: ${SUPPORT_EMAIL}.`,
+        `${OPERATOR} runs the Pabili app (customers) and the Pabili Rider app (riders) in the Philippines. We follow the Data Privacy Act of 2012 (Republic Act 10173). Questions or requests: ${SUPPORT_EMAIL}.`,
       ],
     },
     {
@@ -65,7 +65,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'Security and children',
       body: [
-        'Data is sent over encrypted connections and protected by access rules so people can only see orders they are part of. RideGo is not meant for children under 18.',
+        'Data is sent over encrypted connections and protected by access rules so people can only see orders they are part of. Pabili is not meant for children under 18.',
       ],
     },
     { heading: 'Changes', body: ['If we change this policy we will update it here and show the new date. Last updated: ' + UPDATED + '.'] },
@@ -75,14 +75,14 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'The service',
       body: [
-        `RideGo connects customers with independent motorcycle riders. Pabili: the rider buys items you list, at the store you choose, with the rider’s own money. Pasugo: the rider picks up a document, bag or package and brings it where you say. RideGo does not carry passengers.`,
+        `Pabili connects customers with independent motorcycle riders. Pabili orders: the rider buys items you list, at the store you choose, with the rider’s own money. Pasugo orders: the rider picks up a document, bag or package and brings it where you say. Pabili does not carry passengers.`,
       ],
     },
     {
       heading: 'Paying',
       body: [
         'The app shows the delivery fee before you order. For pabili you also repay the rider the exact amount on the store receipt. Payment is in cash to the rider for now.',
-        'Prices for items are set by the stores, not by RideGo. Ask the rider for the receipt.',
+        'Prices for items are set by the stores, not by Pabili. Ask the rider for the receipt.',
       ],
     },
     {
@@ -98,13 +98,13 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'Your responsibilities',
       body: [
-        'Give correct addresses and contact numbers, be reachable during the order, and treat riders with respect. Pack pasugo items properly. RideGo may suspend accounts that break these rules or abuse promos.',
+        'Give correct addresses and contact numbers, be reachable during the order, and treat riders with respect. Pack pasugo items properly. Pabili may suspend accounts that break these rules or abuse promos.',
       ],
     },
     {
       heading: 'Riders',
       body: [
-        'Riders are independent and are approved by RideGo before they can take jobs. They must hold a valid driver’s license and registration, follow traffic laws, and wear a helmet. Riders keep their share of each fee shown in the app and hand the rest of any cash they collect to RideGo.',
+        'Riders are independent and are approved by Pabili before they can take jobs. They must hold a valid driver’s license and registration, follow traffic laws, and wear a helmet. Riders keep their share of each fee shown in the app and hand the rest of any cash they collect to Pabili.',
       ],
     },
     {
@@ -120,9 +120,9 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'Delete in the app',
       body: [
-        'RideGo app: open Account → Delete account.',
-        'RideGo Rider app: open Profile → Delete account.',
-        'Your login, name, phone number and rider details are deleted right away. You need to finish or cancel any open order first, and riders need to settle their cash balance with RideGo first.',
+        'Pabili app: open Account → Delete account.',
+        'Pabili Rider app: open Profile → Delete account.',
+        'Your login, name, phone number and rider details are deleted right away. You need to finish or cancel any open order first, and riders need to settle their cash balance with Pabili first.',
       ],
     },
     {

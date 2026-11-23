@@ -1,11 +1,11 @@
-# Launching RideGo on the App Store and Google Play
+# Launching Pabili on the App Store and Google Play
 
 Two apps, each listed separately on both stores:
 
 | App | iOS bundle ID / Android package | Build profile |
 |---|---|---|
-| RideGo (customers) | `com.ajaridego.ridego` | `production` |
-| RideGo Rider | `com.ajaridego.ridego.rider` | `rider-production` |
+| Pabili (customers) | `com.ajaridego.ridego` | `production` |
+| Pabili Rider | `com.ajaridego.ridego.rider` | `rider-production` |
 
 Store accounts are **personal** for now (listings show your own name as the seller/developer).
 
@@ -23,7 +23,7 @@ Store accounts are **personal** for now (listings show your own name as the sell
 ### 1. Emails to customers (password reset codes) — ✅ done
 Supabase sends its emails through **Brevo** (free, 300 emails a day), because Supabase's built-in email only reaches your own team.
 - Supabase → Authentication → Emails → SMTP Settings: host `smtp-relay.brevo.com`, port `587`, username = the Brevo SMTP login
-  (`…@smtp-brevo.com`), password = a Brevo SMTP key (Brevo → Settings → SMTP & API). Sender `ridegopabiliapp@gmail.com`, name `RideGo`.
+  (`…@smtp-brevo.com`), password = a Brevo SMTP key (Brevo → Settings → SMTP & API). Sender `ridegopabiliapp@gmail.com`, name `Pabili`.
 - The "Reset password" email template shows a 6-digit code (`{{ .Token }}`) that customers type into the app.
 - If reset emails stop arriving: check Brevo → Transactional → Logs. SMTP keys stop working after 90 days without any email sent —
   generate a new one and paste it into Supabase.
@@ -78,17 +78,17 @@ Apple review usually takes 1–3 days; Google's first review can take up to abou
 
 ## Store texts (ready to paste)
 
-### RideGo (customers)
-- **Name**: RideGo: Pabili & Pasugo
+### Pabili (customers)
+- **Name**: Pabili: Delivery & Pasugo
 - **Subtitle (iOS, 30 chars)**: We buy it. We bring it.
 - **Short description (Play, 80 chars)**: Pabili from any store, or send documents and parcels across town by motorcycle.
 - **Category**: Food & Drink (iOS) / Food & Drink (Play). Alternative: Lifestyle.
 - **Keywords (iOS)**: pabili,pasugo,delivery,padala,errand,courier,rider,food,medicine,grocery,parcel
 - **Description**:
-  > RideGo brings it to you — from any store, anywhere in town.
+  > Pabili brings it to you — from any store, anywhere in town.
   >
   > PABILI — We buy it for you
-  > Need food, medicine, groceries or hardware? Pick a store or type any store (even a small sari-sari store), write your list, and a RideGo rider buys it with their own money and brings it to your door. You pay the rider the exact receipt amount plus the delivery fee. Up to 5 stores in one order.
+  > Need food, medicine, groceries or hardware? Pick a store or type any store (even a small sari-sari store), write your list, and a Pabili rider buys it with their own money and brings it to your door. You pay the rider the exact receipt amount plus the delivery fee. Up to 5 stores in one order.
   >
   > PASUGO — We pick it up for you
   > Documents, a bag, a package: a rider picks it up and brings it to you or anyone you choose.
@@ -101,13 +101,13 @@ Apple review usually takes 1–3 days; Google's first review can take up to abou
   >
   > Questions? ridegopabiliapp@gmail.com
 
-### RideGo Rider
-- **Name**: RideGo Rider
+### Pabili Rider
+- **Name**: Pabili Rider
 - **Subtitle**: Earn with pabili & pasugo
 - **Short description**: Take pabili and pasugo jobs near you, navigate, and track your earnings.
 - **Category**: Business (iOS) / Maps & Navigation or Business (Play)
 - **Description**:
-  > The app for RideGo riders. Go online, receive pabili and pasugo jobs from customers nearby, and earn on your own schedule.
+  > The app for Pabili riders. Go online, receive pabili and pasugo jobs from customers nearby, and earn on your own schedule.
   >
   > • New jobs appear live while you're online
   > • Navigate with Google Maps, Waze or Apple Maps
@@ -115,13 +115,13 @@ Apple review usually takes 1–3 days; Google's first review can take up to abou
   > • Enter receipts so customers repay exactly what you spent
   > • See today's, this week's and all-time earnings and your cash balance
   >
-  > Riders need an approved RideGo account and a motorcycle with valid license and registration.
+  > Riders need an approved Pabili account and a motorcycle with valid license and registration.
   > Apply: ridegopabiliapp@gmail.com
 
 ### Review notes (App Store "Notes" / Play "App access")
-> RideGo is a delivery and errand service in Metro Manila, Philippines. Riders are independent motorcyclists who buy items for customers with their own money; customers repay the receipt plus the delivery fee in cash. The app only charges the delivery fee; no payments are made in the app.
+> Pabili is a delivery and errand service in Metro Manila, Philippines. Riders are independent motorcyclists who buy items for customers with their own money; customers repay the receipt plus the delivery fee in cash. The app only charges the delivery fee; no payments are made in the app.
 > Demo customer: (email) / (password). Set "Saved address" to a place in Makati to see local stores.
-> Demo rider (already approved): (email) / (password). The rider app is used together with the customer app: place an order in RideGo, then accept it in RideGo Rider.
+> Demo rider (already approved): (email) / (password). The rider app is used together with the customer app: place an order in Pabili, then accept it in Pabili Rider.
 > Account deletion: Account → Delete account (customer), Profile → Delete account (rider).
 
 ---

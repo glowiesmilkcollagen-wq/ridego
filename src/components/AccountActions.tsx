@@ -25,7 +25,7 @@ export function AccountActions({ appName }: { appName: string }) {
       'Delete your account?',
       'Your login, name, phone number and saved details are deleted permanently. Past orders are kept without your details for our records. This cannot be undone.',
       () =>
-        confirmAction('Are you sure?', 'Tap Yes to delete your RideGo account now.', async () => {
+        confirmAction('Are you sure?', 'Tap Yes to delete your Pabili account now.', async () => {
           setDeleting(true);
           try {
             await deleteMyAccount();

@@ -18,7 +18,7 @@ export function useLocationSharing(enabled: boolean, onJob = false) {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return setProblem('Location is off. Customers can’t see where you are — allow location for RideGo Rider in Settings.');
+        if (status !== 'granted') return setProblem('Location is off. Customers can’t see where you are — allow location for Pabili Rider in Settings.');
         setProblem(null);
         const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setMyLocation({ latitude: first.coords.latitude, longitude: first.coords.longitude });

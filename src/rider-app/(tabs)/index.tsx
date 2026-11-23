@@ -87,7 +87,7 @@ export default function Jobs() {
               <View style={{ height: 120, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
                 <MaterialCommunityIcons name="crosshairs-gps" size={26} color={colors.muted} />
                 <Text style={{ color: colors.muted, textAlign: 'center', marginTop: 6 }}>
-                  {me.denied ? 'Location is off. Allow location for RideGo Rider in your phone Settings to see the map and get jobs near you.' : 'Finding your location…'}
+                  {me.denied ? 'Location is off. Allow location for Pabili Rider in your phone Settings to see the map and get jobs near you.' : 'Finding your location…'}
                 </Text>
               </View>
             )}
@@ -317,7 +317,7 @@ function Collect({ o }: { o: Order }) {
       <Text style={{ color: colors.muted, marginTop: 2 }}>{parts.length ? parts.join(' + ') : `Nothing to collect — fee paid by ${PAYMENT_LABELS[o.payment]}`}</Text>
       {fee > 0 && (
         <Text style={{ color: colors.muted, marginTop: 2 }}>
-          {fee > earned ? `Keep ${peso(earned)}, remit ${peso(fee - earned)} to RideGo` : fee === earned ? 'Keep it all — nothing to remit' : `Keep it all; RideGo owes you ${peso(earned - fee)} (promo)`}
+          {fee > earned ? `Keep ${peso(earned)}, remit ${peso(fee - earned)} to Pabili` : fee === earned ? 'Keep it all — nothing to remit' : `Keep it all; Pabili owes you ${peso(earned - fee)} (promo)`}
         </Text>
       )}
     </View>

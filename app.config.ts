@@ -6,9 +6,9 @@ const { existsSync } = require('fs');
 
 /**
  * One codebase, three apps (everything not set here comes from app.json):
- * - default            → "RideGo", the customer app (screens in src/app)
- * - APP_VARIANT=rider  → "RideGo Rider", the rider app (screens in src/rider-app)
- * - APP_VARIANT=admin  → "RideGo Admin", the admin dashboard website (screens in src/admin-app)
+ * - default            → "Pabili", the customer app (screens in src/app)
+ * - APP_VARIANT=rider  → "Pabili Rider", the rider app (screens in src/rider-app)
+ * - APP_VARIANT=admin  → "Pabili Admin", the admin dashboard website (screens in src/admin-app)
  */
 // Firebase settings for Android push notifications (one file for both apps; see docs/PUSH_NOTIFICATIONS.md).
 // Added only once the file exists, so builds work before Firebase is set up.
@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   if (variant !== 'rider' && variant !== 'admin') return base;
 
   const routerRoot = variant === 'rider' ? './src/rider-app' : './src/admin-app';
-  const location = 'RideGo Rider uses your location to show nearby jobs and navigate to pickups and drop-offs.';
+  const location = 'Pabili Rider uses your location to show nearby jobs and navigate to pickups and drop-offs.';
   const withRouterRoot = (plugins: ExpoConfig['plugins'] = []) =>
     plugins.map((p) => {
       if (p === 'expo-router') return ['expo-router', { root: routerRoot }] as [string, unknown];
@@ -33,11 +33,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   if (variant === 'admin') {
     // Static output: every page (e.g. /legal/privacy) gets its own HTML file, so store links open directly.
-    return { ...base, name: 'RideGo Admin', scheme: 'ridego-admin', orientation: 'default', web: { ...base.web, output: 'static' }, plugins: withRouterRoot(base.plugins) };
+    return { ...base, name: 'Pabili Admin', scheme: 'ridego-admin', orientation: 'default', web: { ...base.web, output: 'static' }, plugins: withRouterRoot(base.plugins) };
   }
   return {
     ...base,
-    name: 'RideGo Rider',
+    name: 'Pabili Rider',
     scheme: 'ridego-rider',
     ios: {
       ...base.ios,

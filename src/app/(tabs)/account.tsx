@@ -64,15 +64,15 @@ export default function Account() {
           <Item icon="home-outline" label="Delivery address" sub={state.home.name} onPress={() => router.push('/place-search?target=home')} />
           <Item icon="map-marker-star-outline" label="Saved addresses" sub={`${addresses.length} of ${MAX_SAVED_ADDRESSES} saved`} onPress={() => router.push('/saved-addresses')} />
           <Item icon="receipt-text-outline" label="Orders & rides" sub={`${orders.data?.length ?? 0} total`} onPress={() => router.push('/activity')} />
-          <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the RideGo Rider app" onPress={showBecomeRider} last />
+          <Item icon="card-account-details-star-outline" label="Become a rider" sub="Earn with the Pabili Rider app" onPress={showBecomeRider} last />
         </Card>
 
-        <AccountActions appName="RideGo" />
+        <AccountActions appName="Pabili" />
 
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            Pabili (we buy food, medicine, groceries or anything) and Pasugo (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real RideGo riders near you.
+            Pabili orders (we buy food, medicine, groceries or anything) and Pasugo orders (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real Pabili riders near you.
           </Text>
         </Card>
 

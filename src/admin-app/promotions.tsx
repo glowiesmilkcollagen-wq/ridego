@@ -52,7 +52,7 @@ export default function Promotions() {
   return (
     <Page
       title="Promotions"
-      subtitle="Promo codes customers type at checkout. Discounts come out of RideGo's commission — riders still earn their share of the full fee."
+      subtitle="Promo codes customers type at checkout. Discounts come out of Pabili's commission — riders still earn their share of the full fee."
       actions={<SmallButton title="+ New promo code" tone="primary" onPress={() => setForm(EMPTY)} />}
     >
       {form && (

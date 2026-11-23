@@ -13,7 +13,7 @@ import { supabaseConfigured } from '@/lib/supabase';
 import { useInstantUpdates } from '@/lib/updates';
 import { colors } from '@/lib/theme';
 
-/** Root of the separate RideGo Rider app (built with APP_VARIANT=rider). */
+/** Root of the separate Pabili Rider app (built with APP_VARIANT=rider). */
 export default function RiderRootLayout() {
   useInstantUpdates();
   return (
@@ -42,7 +42,7 @@ function Gate() {
   if (loading || (session && riderLoading)) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}><ActivityIndicator color={colors.ride} size="large" /></View>;
   }
-  if (!session) return <AuthScreen title="RideGo Rider" subtitle="Receive pabili and pasugo jobs, navigate, and track your earnings." emoji="🏍️" color={colors.ride} />;
+  if (!session) return <AuthScreen title="Pabili Rider" subtitle="Receive pabili and pasugo jobs, navigate, and track your earnings." emoji="🏍️" color={colors.ride} />;
   if (!rider) return <RegisterScreen onDone={setRider} />;
   if (rider.status !== 'approved') return <StatusScreen rider={rider} onRefresh={refresh} />;
   return (

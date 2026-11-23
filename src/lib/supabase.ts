@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
 /**
- * Connection to the RideGo Supabase project. Set these in the `.env` file at the project root:
+ * Connection to the Pabili Supabase project. Set these in the `.env` file at the project root:
  *   EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
  *   EXPO_PUBLIC_SUPABASE_ANON_KEY=...   (the anon / publishable key — safe to ship in the app; data is protected by
  *                                        the row-level security rules in supabase/schema.sql)

@@ -1,4 +1,4 @@
-/** RideGo uses motorcycles only. */
+/** Pabili uses motorcycles only. */
 export type Vehicle = 'moto';
 export const VEHICLE_LABEL = 'Motorcycle';
 

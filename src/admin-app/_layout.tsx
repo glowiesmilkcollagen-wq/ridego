@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
-/** Root of the RideGo admin dashboard (built with APP_VARIANT=admin, mainly used in a web browser). */
+/** Root of the Pabili admin dashboard (built with APP_VARIANT=admin, mainly used in a web browser). */
 export default function AdminLayout() {
   return (
     <SafeAreaProvider>
@@ -38,7 +38,7 @@ function Gate() {
   // Privacy policy, terms and account-deletion pages are public (store listings link to them).
   if (path.startsWith('/legal')) return <Slot />;
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.text} size="large" /></View>;
-  if (!session) return <AuthScreen title="RideGo Admin" subtitle="Sign in with an admin account." emoji="🛠️" color={colors.text} allowSignUp={false} />;
+  if (!session) return <AuthScreen title="Pabili Admin" subtitle="Sign in with an admin account." emoji="🛠️" color={colors.text} allowSignUp={false} />;
   if (profile?.role !== 'admin') {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 }}>
@@ -63,7 +63,7 @@ function Gate() {
     <SafeAreaView style={{ flex: 1, flexDirection: wide ? 'row' : 'column', backgroundColor: colors.bg }}>
       {wide ? (
         <View style={styles.sidebar}>
-          <Text style={styles.brand}>🛵 RideGo Admin</Text>
+          <Text style={styles.brand}>🛵 Pabili Admin</Text>
           <View style={{ gap: 4, flex: 1 }}>{links}</View>
           <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }} numberOfLines={1}>{session.user.email}</Text>
           <Button title="Log out" variant="outline" color={colors.text} onPress={signOut} />
@@ -71,7 +71,7 @@ function Gate() {
       ) : (
         <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: colors.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10 }}>
-            <Text style={[styles.brand, { flex: 1, marginBottom: 0 }]}>🛵 RideGo Admin</Text>
+            <Text style={[styles.brand, { flex: 1, marginBottom: 0 }]}>🛵 Pabili Admin</Text>
             <Pressable onPress={signOut}><Text style={{ color: colors.danger, fontWeight: '700' }}>Log out</Text></Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ padding: 10, gap: 6 }}>{links}</ScrollView>

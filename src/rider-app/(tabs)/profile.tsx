@@ -48,12 +48,12 @@ export default function Profile() {
           <Row label="Total earned" value={peso(all.earned)} bold />
         </Card>
 
-        <AccountActions appName="RideGo Rider" />
+        <AccountActions appName="Pabili Rider" />
 
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            RideGo Rider — receive pabili and pasugo jobs from customers near you, navigate with Google Maps, Waze or Apple Maps,
+            Pabili Rider — receive pabili and pasugo jobs from customers near you, navigate with Google Maps, Waze or Apple Maps,
             and track your earnings. Keep the app open while online so customers can follow you on the map.
           </Text>
         </Card>

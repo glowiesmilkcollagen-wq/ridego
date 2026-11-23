@@ -1,18 +1,18 @@
-# RideGo — Pabili & Pasugo
+# Pabili — buy-and-deliver (pabili) and pick-up-and-deliver (pasugo)
 
 Three apps from one codebase (Expo / React Native), connected through one **Supabase** database:
 
 | App | For | Runs on | Screens | Start it |
 |---|---|---|---|---|
-| **RideGo** | customers | iPhone, Android | `src/app` | `npx expo start` |
-| **RideGo Rider** | riders | iPhone, Android | `src/rider-app` | `npm run start:rider` |
-| **RideGo Admin** | you | web browser | `src/admin-app` | `npm run start:admin` |
+| **Pabili** | customers | iPhone, Android | `src/app` | `npx expo start` |
+| **Pabili Rider** | riders | iPhone, Android | `src/rider-app` | `npm run start:rider` |
+| **Pabili Admin** | you | web browser | `src/admin-app` | `npm run start:admin` |
 
 `app.config.ts` picks the app with `APP_VARIANT` (`rider`, `admin`, or unset for customers). Shared code is in `src/lib` and `src/components`.
 
 ## What each app does
 
-**RideGo (customers)**
+**Pabili (customers)**
 - **Pabili** — buy anything (food, medicine, groceries, hardware…) from a suggested store or *any* store — or from **up to 5 stores in one order**
   (e.g. chicken from one place and medicine from another), each with its own shopping list. The fee adds **₱20 per store**, including the first
   (Admin → Fees & commission). Write the shopping list;
@@ -21,31 +21,31 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
 - Promo codes, live tracking (the rider's position updates every few seconds, with how far they are), call/text the rider, cancel (before the rider starts), rate.
 - Pays in **cash** for now (GCash/card show as "coming soon").
 
-**RideGo Rider**
-- Sign up → RideGo approves → go online → jobs appear live → accept → step through (arrived → bought/picked up → delivered).
+**Pabili Rider**
+- Sign up → Pabili approves → go online → jobs appear live → accept → step through (arrived → bought/picked up → delivered).
 - Live map: the rider's position, the road route from where they are to the next stop, and the distance left.
 - **Up to 2 orders at once**: a second order is offered only when no free rider is within 10 km of it and it is on the way
   (pickup within 1.5 km of the rider's route, drop-off near the route or the first drop-off, not behind them). The server enforces this.
 - **Navigate** with Google Maps, Waze or Apple Maps. Calls the customer / pickup contact / receiver.
 - Shares GPS while online so customers can follow the rider.
-- Shows exactly what to collect, and **earnings**: today / week / all time, the rider's share, and how much cash they owe RideGo.
+- Shows exactly what to collect, and **earnings**: today / week / all time, the rider's share, and how much cash they owe Pabili.
 
-**RideGo Admin (dashboard)**
+**Pabili Admin (dashboard)**
 - **Overview** reports: live orders, riders online, delivered/cancelled, fees, rider earnings, **company commission**, promo cost, by day and by rider.
 - **Orders** (live, with details and cancel) · **Riders** (approve / reject / suspend) · **Payments** (each rider's balance; record cash remittances and payouts)
 - **Stores** (add/edit/hide suggested stores) · **Fees & commission** (rider share and every price, with preview) · **Promotions** (promo codes).
 
 ### Money rules
-- **Normal rules:** riders keep **70%** of each delivery/pasugo fee; RideGo keeps 30% plus a **₱15 booking fee** that customers pay on every order.
+- **Normal rules:** riders keep **70%** of each delivery/pasugo fee; Pabili keeps 30% plus a **₱15 booking fee** that customers pay on every order.
 - **Beta waiver (on now):** no booking fee and no commission — riders keep **100%**. Switch it off in Admin → Fees & commission to start the normal rules.
 - The share and booking fee are saved on each order, so changes only affect new orders.
 - Fees are calculated **on the server** from distance and the admin's prices — the apps can't change them.
-- Promo discounts come out of RideGo's part; riders still earn their share of the full fee.
-- Cash: the rider collects the fee, keeps their share, and owes RideGo the rest until the admin records a remittance.
+- Promo discounts come out of Pabili's part; riders still earn their share of the full fee.
+- Cash: the rider collects the fee, keeps their share, and owes Pabili the rest until the admin records a remittance.
 
 ## 1. Connect the database (once)
 
-> **Already done for RideGo:** the project `euzgazzfrytlihcnkmek` (Singapore) has the schema, security rules and starter stores
+> **Already done for Pabili:** the project `euzgazzfrytlihcnkmek` (Singapore) has the schema, security rules and starter stores
 > loaded, email confirmation is off, and `.env` points the apps at it. The steps below are for setting up a new project.
 
 1. Create a free project at [supabase.com](https://supabase.com) (region: Southeast Asia / Singapore).
@@ -108,8 +108,8 @@ If the function can't be reached, the apps fall back to OSRM, then to a straight
 ## Instant updates (no rebuild)
 Changes to screens, text and app logic can be sent straight to installed apps with **EAS Update**:
 ```bash
-npm run update:customer      # RideGo (TestFlight/App Store and Android test/store builds)
-npm run update:rider         # RideGo Rider
+npm run update:customer      # Pabili (TestFlight/App Store and Android test/store builds)
+npm run update:rider         # Pabili Rider
 ```
 Phones download the update when the app opens and switch to it the next time the user comes back to the app.
 A new build is still needed when native parts change (new native modules, permissions, icons, app.json plugins):

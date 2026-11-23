@@ -36,7 +36,7 @@ function Gate() {
   usePushNotifications('customer', !!session);
   useLocationAsHome(!!session);
   if (loading) return <Loading />;
-  if (!session) return <AuthScreen title="RideGo" subtitle="Pabili and Pasugo — we buy it, pick it up, and bring it to you." emoji="🛵" />;
+  if (!session) return <AuthScreen title="Pabili" subtitle="We buy it, pick it up, and bring it to you." emoji="🛵" />;
   return (
     <Stack
       screenOptions={{

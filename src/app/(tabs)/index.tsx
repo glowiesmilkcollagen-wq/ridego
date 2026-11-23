@@ -58,8 +58,8 @@ export default function Home() {
         <Pressable style={styles.driverBanner} onPress={showBecomeRider}>
           <MaterialCommunityIcons name="card-account-details-star-outline" size={28} color={colors.text} />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a RideGo rider</Text>
-            <Text style={{ color: colors.muted, marginTop: 2 }}>Get the RideGo Rider app and earn on your own schedule</Text>
+            <Text style={{ fontWeight: '800', color: colors.text }}>Earn as a Pabili rider</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>Get the Pabili Rider app and earn on your own schedule</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>

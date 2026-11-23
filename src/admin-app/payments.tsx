@@ -47,14 +47,14 @@ export default function Payments() {
   return (
     <Page title="Payments" subtitle="Customers pay cash for now: riders collect the fee, keep their share, and remit the rest. Record what you receive or pay out here.">
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        <StatCard label="Riders owe RideGo" value={peso(owedToCompany)} tone={owedToCompany ? 'warn' : undefined} hint="Company share of cash fees not yet remitted" />
-        <StatCard label="RideGo owes riders" value={peso(owedToRiders)} hint="Rider share of promos or non-cash fees" />
+        <StatCard label="Riders owe Pabili" value={peso(owedToCompany)} tone={owedToCompany ? 'warn' : undefined} hint="Company share of cash fees not yet remitted" />
+        <StatCard label="Pabili owes riders" value={peso(owedToRiders)} hint="Rider share of promos or non-cash fees" />
       </View>
 
       {selected && (
         <Panel title={`Record for ${name(selected)}`}>
           <View style={{ gap: 12 }}>
-            <Segmented value={type} onChange={setType} options={[{ value: 'remittance', label: 'Rider paid RideGo (remittance)' }, { value: 'payout', label: 'RideGo paid rider (payout)' }]} />
+            <Segmented value={type} onChange={setType} options={[{ value: 'remittance', label: 'Rider paid Pabili (remittance)' }, { value: 'payout', label: 'Pabili paid rider (payout)' }]} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               <Field label="Amount (₱)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
               <Field label="Note" value={note} onChangeText={setNote} placeholder="e.g. GCash ref 1234, cash at office" />
@@ -76,7 +76,7 @@ export default function Payments() {
             return [
               name(id),
               <Text key="b" style={{ fontWeight: '700', color: b > 0 ? '#9A6700' : b < 0 ? colors.ride : colors.muted }}>
-                {b > 0 ? `Owes RideGo ${peso(b)}` : b < 0 ? `RideGo owes ${peso(-b)}` : 'Settled'}
+                {b > 0 ? `Owes Pabili ${peso(b)}` : b < 0 ? `Pabili owes ${peso(-b)}` : 'Settled'}
               </Text>,
               <SmallButton key="r" title="Record" onPress={() => pick(id)} />,
             ];

@@ -48,11 +48,11 @@ export function RegisterScreen({ onDone }: { onDone: (r: Rider) => void }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
           <Text style={{ fontSize: 48, textAlign: 'center' }}>🏍️</Text>
-          <Text style={styles.title}>Become a RideGo rider</Text>
-          <Text style={styles.subtitle}>Tell us about you and your motorcycle. RideGo reviews every application before you can take jobs.</Text>
+          <Text style={styles.title}>Become a Pabili rider</Text>
+          <Text style={styles.subtitle}>Tell us about you and your motorcycle. Pabili reviews every application before you can take jobs.</Text>
           <RiderForm onDone={onDone} />
           <Button title="Log out" variant="ghost" color={colors.muted} onPress={signOut} />
-          <AccountActions appName="RideGo Rider" />
+          <AccountActions appName="Pabili Rider" />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -68,12 +68,12 @@ export function StatusScreen({ rider, onRefresh }: { rider: Rider; onRefresh: ()
         <Text style={styles.title}>{pending ? 'Application received' : 'Account suspended'}</Text>
         <Text style={styles.subtitle}>
           {pending
-            ? `We're reviewing your details (${VEHICLE_LABEL} · ${rider.plate}). You can take jobs as soon as RideGo approves your account.`
-            : 'Your rider account is suspended. Please contact RideGo support.'}
+            ? `We're reviewing your details (${VEHICLE_LABEL} · ${rider.plate}). You can take jobs as soon as Pabili approves your account.`
+            : 'Your rider account is suspended. Please contact Pabili support.'}
         </Text>
         <Button title="Check again" color={colors.ride} onPress={onRefresh} />
         <Button title="Log out" variant="ghost" color={colors.muted} onPress={signOut} />
-        <AccountActions appName="RideGo Rider" />
+        <AccountActions appName="Pabili Rider" />
       </ScrollView>
     </SafeAreaView>
   );

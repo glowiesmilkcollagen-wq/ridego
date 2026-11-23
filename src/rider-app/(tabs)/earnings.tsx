@@ -44,11 +44,11 @@ export default function Earnings() {
             <Text style={styles.h1}>Earnings</Text>
 
             <Card style={balance > 0 ? { backgroundColor: '#FFF7E6', borderColor: colors.warning } : undefined}>
-              <Text style={{ color: colors.text }}>{balance > 0 ? 'You owe RideGo' : balance < 0 ? 'RideGo owes you' : 'You are settled with RideGo'}</Text>
+              <Text style={{ color: colors.text }}>{balance > 0 ? 'You owe Pabili' : balance < 0 ? 'Pabili owes you' : 'You are settled with Pabili'}</Text>
               <Text style={[styles.big, { fontSize: 26 }]}>{peso(Math.abs(balance))}</Text>
               <Text style={styles.note}>
-                {balance > 0 ? 'The company’s share of cash fees you collected. Remit it to RideGo; the admin records it here.'
-                  : balance < 0 ? 'Your share of fees RideGo collected (or promo discounts). RideGo pays it out to you.' : 'All cash and payouts are recorded.'}
+                {balance > 0 ? 'The company’s share of cash fees you collected. Remit it to Pabili; the admin records it here.'
+                  : balance < 0 ? 'Your share of fees Pabili collected (or promo discounts). Pabili pays it out to you.' : 'All cash and payouts are recorded.'}
               </Text>
             </Card>
 

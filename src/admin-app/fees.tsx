@@ -65,7 +65,7 @@ export default function Fees() {
             <Text style={{ color: colors.muted, marginTop: 2 }}>
               {form.beta_waiver
                 ? `Customers pay only the delivery/pasugo fee, and riders keep 100% of it. Turn this off to start charging the ₱${p.booking_fee} booking fee and keeping ${percent(1 - p.rider_share)} commission.`
-                : `Customers pay the fee plus a ₱${p.booking_fee} booking fee; riders keep ${percent(p.rider_share)} of the fee and RideGo keeps ${percent(1 - p.rider_share)} plus the booking fee.`}
+                : `Customers pay the fee plus a ₱${p.booking_fee} booking fee; riders keep ${percent(p.rider_share)} of the fee and Pabili keeps ${percent(1 - p.rider_share)} plus the booking fee.`}
             </Text>
           </View>
         </Pressable>
@@ -73,8 +73,8 @@ export default function Fees() {
 
       <Panel title="Commission and booking fee (apply when the beta waiver is off)">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {f('rider_share', 'Rider share (%)', `Riders keep ${percent(p.rider_share)} of each fee; RideGo keeps ${percent(1 - p.rider_share)}.`)}
-          {f('booking_fee', 'Booking fee (₱)', 'Added to every order; goes to RideGo.')}
+          {f('rider_share', 'Rider share (%)', `Riders keep ${percent(p.rider_share)} of each fee; Pabili keeps ${percent(1 - p.rider_share)}.`)}
+          {f('booking_fee', 'Booking fee (₱)', 'Added to every order; goes to Pabili.')}
         </View>
       </Panel>
       <Panel title="Pabili delivery fee">
@@ -92,14 +92,14 @@ export default function Fees() {
       </Panel>
       <Panel title={`Preview — pasugo, ${form.beta_waiver ? 'beta waiver ON' : 'beta waiver OFF'}`}>
         <Table
-          head={['Distance', 'Fee', 'Booking fee', 'Customer pays', 'Rider gets', 'RideGo keeps']}
+          head={['Distance', 'Fee', 'Booking fee', 'Customer pays', 'Rider gets', 'Pabili keeps']}
           rows={[2, 5, 8, 12].map((km) => {
             const fee = pasugoFee(km, p);
             const rider = Math.round(fee * share);
             return [`${km} km`, peso(fee), peso(booking), peso(fee + booking), peso(rider), peso(fee + booking - rider)];
           })}
         />
-        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances, 1 store: {[2, 5, 8, 12].map((km) => peso(deliveryFee(km, p))).join(' · ')}; each extra store adds {peso(p.pabili_per_store)} (before booking fee). Promo discounts come out of RideGo’s part.</Text>
+        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances, 1 store: {[2, 5, 8, 12].map((km) => peso(deliveryFee(km, p))).join(' · ')}; each extra store adds {peso(p.pabili_per_store)} (before booking fee). Promo discounts come out of Pabili’s part.</Text>
       </Panel>
       <View style={{ height: 1, borderRadius: radius.sm }} />
     </Page>

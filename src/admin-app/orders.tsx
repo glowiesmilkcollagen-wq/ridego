@@ -23,7 +23,7 @@ export default function Orders() {
     filter === 'all' ? true : filter === 'open' ? isOpen(o) : o.status === filter);
 
   const cancel = (o: Order) =>
-    confirmAction(`Cancel order ${o.code}?`, 'The customer and rider will see it as cancelled by RideGo.', async () => {
+    confirmAction(`Cancel order ${o.code}?`, 'The customer and rider will see it as cancelled by Pabili.', async () => {
       try {
         await adminCancelOrder(o.id);
         orders.refresh();

@@ -18,10 +18,10 @@ export default function LegalPage() {
   return (
     <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={styles.wrap}>
       <Head>
-        <title>{known ? `${LEGAL_TITLES[known]} · RideGo` : 'RideGo'}</title>
-        <meta name="description" content="RideGo — Pabili and Pasugo delivery in the Philippines." />
+        <title>{known ? `${LEGAL_TITLES[known]} · Pabili` : 'Pabili'}</title>
+        <meta name="description" content="Pabili — we buy it (pabili) or pick it up (pasugo) and bring it to you, in the Philippines." />
       </Head>
-      <Text style={styles.brand}>🛵 RideGo</Text>
+      <Text style={styles.brand}>🛵 Pabili</Text>
       <Text style={styles.title}>{known ? LEGAL_TITLES[known] : 'Page not found'}</Text>
       {known ? <LegalView doc={known} /> : <Text style={{ color: colors.muted }}>Try the links below.</Text>}
       <View style={styles.links}>
