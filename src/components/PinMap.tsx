@@ -27,6 +27,8 @@ export default function PinMap({ start, onChange, height = 320, handle, onTouchi
         ref={map}
         style={StyleSheet.absoluteFill}
         initialRegion={{ ...start, latitudeDelta: 0.006, longitudeDelta: 0.006 }}
+        // iPhone maps can ignore the starting zoom before they finish loading: centre again once ready.
+        onMapReady={() => map.current?.animateToRegion({ ...start, latitudeDelta: 0.006, longitudeDelta: 0.006 }, 0)}
         onRegionChangeComplete={(r) => onChange({ latitude: r.latitude, longitude: r.longitude })}
         // Tapping a spot moves the pin there (the map re-centres on it).
         onPress={(e) => moveTo(e.nativeEvent.coordinate)}

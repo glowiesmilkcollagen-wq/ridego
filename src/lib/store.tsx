@@ -15,6 +15,8 @@ export const MAX_STORES = 5;
 type State = {
   ready: boolean;
   home: Stop;
+  /** True once the customer picked a delivery address; until then it follows the phone's location. */
+  homeChosen: boolean;
   payment: PaymentMethod;
   errand: Errand;
   pasugoDraft: { pickup: Stop | null; dropoff: Stop | null };
@@ -24,6 +26,7 @@ const EMPTY_ERRAND: Errand = { stops: [] };
 const INITIAL: State = {
   ready: false,
   home: { name: 'Ayala Triangle, Makati', location: DEFAULT_LOCATION },
+  homeChosen: false,
   payment: 'cash',
   errand: EMPTY_ERRAND,
   pasugoDraft: { pickup: null, dropoff: null },
@@ -44,7 +47,13 @@ function useStoreValue() {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((raw) => setState(raw ? { ...INITIAL, ...JSON.parse(raw), ready: true } : (s) => ({ ...s, ready: true })))
+      .then((raw) => {
+        if (!raw) return setState((s) => ({ ...s, ready: true }));
+        const saved = JSON.parse(raw);
+        // Older saves have no homeChosen: an address other than the default was picked by the customer.
+        const homeChosen = saved.homeChosen ?? (saved.home?.name && saved.home.name !== INITIAL.home.name);
+        setState({ ...INITIAL, ...saved, homeChosen: !!homeChosen, ready: true });
+      })
       .catch(() => setState((s) => ({ ...s, ready: true })))
       .finally(() => (loaded.current = true));
   }, []);
@@ -59,7 +68,10 @@ function useStoreValue() {
 
   const actions = useMemo(
     () => ({
-      setHome: (home: Stop) => update(() => ({ home })),
+      /** The customer's own choice of delivery address. */
+      setHome: (home: Stop) => update(() => ({ home, homeChosen: true })),
+      /** The phone's location, used until the customer picks an address (never overrides their choice). */
+      setHomeFromGps: (home: Stop) => update((s) => (s.homeChosen ? {} : { home })),
       setPayment: (payment: PaymentMethod) => update(() => ({ payment })),
       setPasugoStop: (which: 'pickup' | 'dropoff', stop: Stop | null) => update((s) => ({ pasugoDraft: { ...s.pasugoDraft, [which]: stop } })),
       swapPasugoStops: () => update((s) => ({ pasugoDraft: { pickup: s.pasugoDraft.dropoff, dropoff: s.pasugoDraft.pickup } })),

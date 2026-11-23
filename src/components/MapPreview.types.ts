@@ -7,6 +7,8 @@ export type MapPreviewProps = {
   path?: LatLng[];
   height?: number;
   rideIcon?: 'motorbike' | 'car';
+  /** Shows the phone's own blue dot. */
+  showsUserLocation?: boolean;
 };
 
 export const PIN_STYLE: Record<MapPin['kind'], { color: string; icon: string }> = {

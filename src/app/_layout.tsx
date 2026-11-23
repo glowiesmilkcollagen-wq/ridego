@@ -6,7 +6,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuthScreen, { NotConfigured } from '@/components/AuthScreen';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePushNotifications } from '@/lib/push';
-import { StoreProvider } from '@/lib/store';
+import { distanceKm } from '@/lib/geo';
+import { placeName, useMyLocation } from '@/lib/location';
+import { StoreProvider, useStore } from '@/lib/store';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
@@ -30,6 +32,7 @@ export default function RootLayout() {
 function Gate() {
   const { session, loading } = useAuth();
   usePushNotifications('customer', !!session);
+  useLocationAsHome(!!session);
   if (loading) return <Loading />;
   if (!session) return <AuthScreen title="RideGo" subtitle="Pabili and Pasugo — we buy it, pick it up, and bring it to you." emoji="🛵" />;
   return (
@@ -54,6 +57,22 @@ function Gate() {
       <Stack.Screen name="saved-addresses" options={{ title: 'Saved addresses' }} />
     </Stack>
   );
+}
+
+/**
+ * After login, asks for location; until the customer picks a delivery address, the address (and so every map)
+ * starts where the phone is. A chosen or saved address is never replaced.
+ */
+function useLocationAsHome(signedIn: boolean) {
+  const { state, setHomeFromGps } = useStore();
+  const { location } = useMyLocation(signedIn);
+  React.useEffect(() => {
+    if (!state.ready || state.homeChosen || !location) return;
+    if (distanceKm(location, state.home.location) < 0.05 && state.home.name !== 'Ayala Triangle, Makati') return;
+    let live = true;
+    placeName(location).then((name) => { if (live) setHomeFromGps({ name: name ?? 'My current location', location }); });
+    return () => { live = false; };
+  }, [state.ready, state.homeChosen, location, state.home, setHomeFromGps]);
 }
 
 export function Loading() {

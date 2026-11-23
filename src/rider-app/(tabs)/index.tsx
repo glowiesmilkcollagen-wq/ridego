@@ -10,6 +10,7 @@ import {
   acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, stopsOf, storesLabel, useCustomerProfile, useOpenJobs, useRiderOrders,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useMyLocation } from '@/lib/location';
 import { deliveredSince, nextStepLabel, RIDER_TODO, summarize } from '@/lib/driver';
 import { percent } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
@@ -24,6 +25,7 @@ export default function Jobs() {
   const online = !!rider?.online;
   const open = useOpenJobs(online && !active);
   const locationProblem = useLocationSharing(online);
+  const me = useMyLocation(true);
   const today = summarize(deliveredSince(orders.data ?? [], 'today'));
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -63,6 +65,28 @@ export default function Jobs() {
           <Stat label="Jobs today" value={String(today.jobs)} />
           <Stat label="Cash to remit" value={peso(today.toRemit)} />
         </View>
+
+        {!active && (
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {me.location ? (
+              <MapPreview
+                height={200}
+                showsUserLocation
+                pins={[
+                  { id: 'me', coord: me.location, kind: 'rider' as const },
+                  ...(online ? (open.data ?? []).map((o) => ({ id: o.id, coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: (o.kind === 'pabili' ? 'store' : 'pickup') as 'store' | 'pickup' })) : []),
+                ]}
+              />
+            ) : (
+              <View style={{ height: 120, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                <MaterialCommunityIcons name="crosshairs-gps" size={26} color={colors.muted} />
+                <Text style={{ color: colors.muted, textAlign: 'center', marginTop: 6 }}>
+                  {me.denied ? 'Location is off. Allow location for RideGo Rider in your phone Settings to see the map and get jobs near you.' : 'Finding your location…'}
+                </Text>
+              </View>
+            )}
+          </Card>
+        )}
 
         {active ? (
           <ActiveJob key={active.id} o={active} busy={busy} run={run} />

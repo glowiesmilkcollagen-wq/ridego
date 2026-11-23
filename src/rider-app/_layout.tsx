@@ -7,6 +7,7 @@ import AuthScreen, { NotConfigured } from '@/components/AuthScreen';
 import { RiderProvider, useRider } from '@/components/rider/RiderContext';
 import { RegisterScreen, StatusScreen } from '@/components/rider/RiderOnboarding';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useMyLocation } from '@/lib/location';
 import { usePushNotifications } from '@/lib/push';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
@@ -34,6 +35,8 @@ function Gate() {
   const { rider, loading: riderLoading, refresh, setRider } = useRider();
   // Registered even before approval, so the rider hears "You're approved".
   usePushNotifications('rider', !!session && !!rider);
+  // Ask for location as soon as the rider is logged in, so the jobs map can centre on them.
+  useMyLocation(!!session);
   if (loading || (session && riderLoading)) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}><ActivityIndicator color={colors.ride} size="large" /></View>;
   }
