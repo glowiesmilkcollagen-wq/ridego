@@ -10,9 +10,11 @@ import { distanceKm } from '@/lib/geo';
 import { placeName, useMyLocation } from '@/lib/location';
 import { StoreProvider, useStore } from '@/lib/store';
 import { supabaseConfigured } from '@/lib/supabase';
+import { useInstantUpdates } from '@/lib/updates';
 import { colors } from '@/lib/theme';
 
 export default function RootLayout() {
+  useInstantUpdates();
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />

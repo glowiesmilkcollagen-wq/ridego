@@ -8,22 +8,26 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     },
     "rider-preview": {
       "extends": "preview",
       "env": {
         "APP_VARIANT": "rider"
-      }
+      },
+      "channel": "rider-preview"
     },
     "rider-production": {
       "extends": "production",
       "env": {
         "APP_VARIANT": "rider"
-      }
+      },
+      "channel": "rider-production"
     }
   },
   "submit": {

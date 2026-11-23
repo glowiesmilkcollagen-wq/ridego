@@ -105,6 +105,16 @@ It uses Google (motorcycle routes, car roads if none) when the secret is set, ot
 answers for 30 days in `route_cache` so the same trip doesn't cost twice. Only signed-in users can call it, and only for points in the Philippines.
 If the function can't be reached, the apps fall back to OSRM, then to a straight-line estimate. No app update is needed when you add the key.
 
+## Instant updates (no rebuild)
+Changes to screens, text and app logic can be sent straight to installed apps with **EAS Update**:
+```bash
+npm run update:customer      # RideGo (TestFlight/App Store and Android test/store builds)
+npm run update:rider         # RideGo Rider
+```
+Phones download the update when the app opens and switch to it the next time the user comes back to the app.
+A new build is still needed when native parts change (new native modules, permissions, icons, app.json plugins):
+builds and updates use a *fingerprint* of the native code, so an update never reaches a build it does not fit.
+
 ## Publishing to the App Store and Google Play
 Step-by-step guide, store texts and privacy-form answers: [`docs/STORE_LAUNCH.md`](docs/STORE_LAUNCH.md).
 

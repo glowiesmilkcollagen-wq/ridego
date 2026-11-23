@@ -10,10 +10,12 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { useMyLocation } from '@/lib/location';
 import { usePushNotifications } from '@/lib/push';
 import { supabaseConfigured } from '@/lib/supabase';
+import { useInstantUpdates } from '@/lib/updates';
 import { colors } from '@/lib/theme';
 
 /** Root of the separate RideGo Rider app (built with APP_VARIANT=rider). */
 export default function RiderRootLayout() {
+  useInstantUpdates();
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
