@@ -10,7 +10,7 @@ import PinMap, { PinMapHandle } from '@/components/PinMap';
 import { Button } from '@/components/ui';
 import { addressText, MAX_SAVED_ADDRESSES, saveAddress, useSavedAddresses } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { PLACES } from '@/lib/data';
+import { landmarksNear } from '@/lib/nearby';
 import { distanceKm, LatLng } from '@/lib/geo';
 import { useStore } from '@/lib/store';
 import { errorText } from '@/lib/supabase';
@@ -124,14 +124,16 @@ export default function PinLocation() {
               {locating ? <ActivityIndicator color={colors.primary} size="small" /> : <MaterialCommunityIcons name="crosshairs-gps" size={18} color={colors.primary} />}
               <Text style={styles.chipText}>My location</Text>
             </Pressable>
+            {landmarksNear(state.home.location).length > 0 && (
             <Pressable onPress={() => setLandmarks((v) => !v)} style={styles.chip}>
               <MaterialCommunityIcons name="map-marker-radius-outline" size={18} color={colors.primary} />
               <Text style={styles.chipText}>Near a landmark</Text>
             </Pressable>
+            )}
           </View>
           {landmarks && (
             <View style={[styles.card, { marginTop: 10, paddingVertical: 4 }]}>
-              {PLACES.map((p) => (
+              {landmarksNear(state.home.location).map((p) => (
                 <Pressable key={p.id} onPress={() => { moveTo(p.location); setLandmarks(false); }} style={styles.row}>
                   <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.muted} />
                   <Text style={{ marginLeft: 10, flex: 1, color: colors.text, fontWeight: '600' }}>{p.name}</Text>

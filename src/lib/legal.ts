@@ -46,7 +46,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
       heading: 'Who sees it',
       body: [
         'The rider who accepts your order sees your first name, mobile number, addresses and the order details. You see your rider’s name, mobile number, plate number and location during the order.',
-        'Service providers that run the app for us: Supabase (database and login, servers in Singapore), Google Maps Platform (road distances and maps; it receives map coordinates), Expo and Google Firebase / Apple (delivering notifications), and Expo (app builds and updates).',
+        'Service providers that run the app for us: Supabase (database and login, servers in Singapore), Google Maps Platform (road distances, maps and nearby stores; it receives map coordinates), Expo and Google Firebase / Apple (delivering notifications), and Expo (app builds and updates).',
         'We do not sell your data. We share it with authorities only when the law requires.',
       ],
     },

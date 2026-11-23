@@ -9,7 +9,7 @@ import { confirmAction } from '@/components/admin/ui';
 import PinMap, { PinMapHandle } from '@/components/PinMap';
 import { Button } from '@/components/ui';
 import { useStartErrand } from '@/components/useStartErrand';
-import { PLACES } from '@/lib/data';
+import { landmarksNear } from '@/lib/nearby';
 import { distanceKm, LatLng } from '@/lib/geo';
 import { MAX_STORES, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
@@ -117,14 +117,16 @@ export default function CustomStore() {
               <MaterialCommunityIcons name="home-outline" size={18} color={colors.primary} />
               <Text style={styles.chipText}>Delivery address</Text>
             </Pressable>
+            {landmarksNear(state.home.location).length > 0 && (
             <Pressable onPress={() => setLandmarks((v) => !v)} style={styles.chip}>
               <MaterialCommunityIcons name="map-marker-radius-outline" size={18} color={colors.primary} />
               <Text style={styles.chipText}>Landmark</Text>
             </Pressable>
+            )}
           </View>
           {landmarks && (
             <View style={[styles.card, { marginTop: 10, paddingVertical: 4 }]}>
-              {PLACES.map((p) => (
+              {landmarksNear(state.home.location).map((p) => (
                 <Pressable key={p.id} onPress={() => { moveTo(p.location); setLandmarks(false); }} style={styles.landmark}>
                   <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.muted} />
                   <Text style={{ marginLeft: 10, flex: 1, color: colors.text, fontWeight: '600' }}>{p.name}</Text>

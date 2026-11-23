@@ -1,7 +1,8 @@
-// RideGo road routing. Called by the apps with supabase.functions.invoke('route', { body }).
+// Pabili road routing and nearby stores. Called by the apps with supabase.functions.invoke('route', { body }).
 //
 //   { op: 'route',  points: [[lat, lng], ...] }            -> { km, path: [[lat, lng], ...], source }
 //   { op: 'matrix', origins: [[lat, lng], ...], dest: [lat, lng] } -> { km: (number | null)[], source }
+//   { op: 'places', at: [lat, lng] }                         -> { places: [{ id, name, address, lat, lng, type }] } (stores near a point)
 //
 // Uses the Google Routes API when the secret GOOGLE_MAPS_API_KEY is set (Supabase dashboard ->
 // Edge Functions -> Secrets), otherwise the free OSRM demo server. Answers are cached in
@@ -157,6 +158,43 @@ async function osrmMatrix(origins: P[], dest: P) {
   return origins.map((_, i) => (typeof j.distances?.[i]?.[0] === 'number' ? j.distances[i][0] / 1000 : null));
 }
 
+// ---------- nearby stores (Google Places API, New) ----------
+// Pabili categories → Google place types. Two searches (food, and shops) so restaurants don't crowd out pharmacies.
+const PLACE_GROUPS: string[][] = [
+  ['restaurant', 'fast_food_restaurant', 'cafe', 'coffee_shop', 'bakery', 'meal_takeaway'],
+  ['pharmacy', 'drugstore', 'convenience_store', 'grocery_store', 'supermarket', 'market', 'hardware_store', 'home_improvement_store', 'florist', 'gift_shop', 'pet_store'],
+];
+const PLACES_CACHE_HOURS = 24;
+const PLACES_RADIUS_M = 1500; // searched around a ~500 m grid cell; the app keeps only stores within 1 km of the customer
+
+type Place = { id: string; name: string; address: string; lat: number; lng: number; type: string };
+
+async function googlePlaces(center: P): Promise<Place[]> {
+  const out = new Map<string, Place>();
+  for (const includedTypes of PLACE_GROUPS) {
+    const body = await fetchJson('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.shortFormattedAddress,places.location,places.primaryType',
+      },
+      body: JSON.stringify({
+        includedTypes, maxResultCount: 20, rankPreference: 'DISTANCE', languageCode: 'en', regionCode: 'PH',
+        locationRestriction: { circle: { center: { latitude: center[0], longitude: center[1] }, radius: PLACES_RADIUS_M } },
+      }),
+    });
+    for (const p of body?.places ?? []) {
+      if (!p?.id || !p.location) continue;
+      out.set(p.id, {
+        id: p.id, name: p.displayName?.text ?? 'Store', address: p.shortFormattedAddress ?? '',
+        lat: p.location.latitude, lng: p.location.longitude, type: p.primaryType ?? '',
+      });
+    }
+  }
+  return [...out.values()];
+}
+
 // ---------- cache ----------
 const fresh = () => new Date(Date.now() - CACHE_DAYS * 864e5).toISOString();
 async function cacheGet(keys: string[]) {
@@ -192,6 +230,26 @@ Deno.serve(async (req) => {
       const path = thin(r.path);
       await cachePut([{ key, km: r.km, path, source }]);
       return json({ km: r.km, path, source });
+    }
+    if (body.op === 'places') {
+      const at = body.at;
+      if (!inPH(at)) return json({ error: 'Bad points' }, 400);
+      if (!GOOGLE_KEY) return json({ places: [], source: 'none' });
+      // One search per ~500 m grid cell per day, shared by everyone in that area.
+      const cell: P = [Math.round(at[0] / 0.005) * 0.005, Math.round(at[1] / 0.005) * 0.005];
+      const key = `pl:${cell[0].toFixed(3)},${cell[1].toFixed(3)}`;
+      const since = new Date(Date.now() - PLACES_CACHE_HOURS * 3600e3).toISOString();
+      const { data: hit } = await db.from('route_cache').select('path').eq('key', key).gte('created_at', since).maybeSingle();
+      if (hit?.path) return json({ places: hit.path, source: 'google', cached: true });
+      try {
+        const places = await googlePlaces(cell);
+        await db.from('route_cache').upsert({ key, km: 0, path: places, source: 'google-places', created_at: new Date().toISOString() });
+        return json({ places, source: 'google' });
+      } catch (e) {
+        // The app then shows Pabili's own stores and "type any store"; the reason helps setup (e.g. API not enabled).
+        console.error('places failed', String(e));
+        return json({ places: [], source: 'error', reason: String(e).replace(/AIza[0-9A-Za-z_-]+/g, '[key]').slice(0, 300) });
+      }
     }
     if (body.op === 'matrix') {
       const { origins, dest } = body;

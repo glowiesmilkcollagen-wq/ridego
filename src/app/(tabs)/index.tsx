@@ -7,24 +7,26 @@ import StoreCard from '@/components/StoreCard';
 import TripCard from '@/components/TripCard';
 import { showBecomeRider } from '@/components/becomeRider';
 import { SectionTitle } from '@/components/ui';
-import { isOpen, useMyOrders, useStores } from '@/lib/api';
+import { isOpen, useMyOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CATEGORIES } from '@/lib/data';
-import { useStoreDistances } from '@/lib/routing';
+import { distanceKm, roadKm } from '@/lib/geo';
+import { NEARBY_KM, useNearbyStores } from '@/lib/nearby';
 import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 export default function Home() {
   const { state } = useStore();
   const { userId, profile } = useAuth();
-  const { stores } = useStores();
+  const { stores, loading: storesLoading } = useNearbyStores(state.home.location);
   const orders = useMyOrders(userId);
-  const kmFor = useStoreDistances(stores, state.home.location);
+  const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const active = (orders.data ?? []).filter(isOpen);
   const first = (profile?.full_name || 'there').split(' ')[0];
-  // Best-rated store of each kind, so Home shows that pabili is not only for food.
+  // The nearest store of each kind, so Home shows that pabili is not only for food.
   const topPerCategory = CATEGORIES.flatMap((c) => {
-    const best = stores.filter((s) => s.category === c.key).sort((a, b) => b.rating - a.rating)[0];
+    const best = stores.filter((s) => s.category === c.key)
+      .sort((a, b) => distanceKm(a.location, state.home.location) - distanceKm(b.location, state.home.location))[0];
     return best ? [best] : [];
   });
 
@@ -77,6 +79,9 @@ export default function Home() {
             <StoreCard key={r.id} r={r} km={kmFor(r)} compact />
           ))}
         </ScrollView>
+        {!storesLoading && !topPerCategory.length && (
+          <Text style={{ color: colors.muted }}>No stores found within {NEARBY_KM} km. In Pabili, tap “Buy from any store” and type the store’s name.</Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

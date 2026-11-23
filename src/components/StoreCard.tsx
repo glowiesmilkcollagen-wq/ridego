@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Store } from '@/lib/data';
+import { storeStop } from '@/lib/nearby';
 import { deliveryFee, etaMinutes } from '@/lib/pricing';
 import { colors, peso, radius } from '@/lib/theme';
 import { useStartErrand } from './useStartErrand';
@@ -12,7 +13,7 @@ export default function StoreCard({ r, km, compact }: { r: Store; km: number; co
   const eta = r.waitMinutes + etaMinutes(km) + 5;
   return (
     <Pressable
-      onPress={() => start({ name: r.name, location: r.location }, r.id)}
+      onPress={() => { const { stop, storeId } = storeStop(r); start(stop, storeId); }}
       style={({ pressed }) => [styles.card, compact && { width: 240, marginRight: 12 }, pressed && { opacity: 0.85 }]}
     >
       <View style={[styles.banner, { backgroundColor: r.tint }]}>
@@ -21,12 +22,14 @@ export default function StoreCard({ r, km, compact }: { r: Store; km: number; co
       <View style={{ padding: 12 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={styles.name} numberOfLines={1}>{r.name}</Text>
-          <View style={styles.rating}>
-            <MaterialCommunityIcons name="star" size={14} color={colors.warning} />
-            <Text style={{ fontWeight: '700', marginLeft: 2 }}>{r.rating}</Text>
-          </View>
+          {r.rating > 0 && (
+            <View style={styles.rating}>
+              <MaterialCommunityIcons name="star" size={14} color={colors.warning} />
+              <Text style={{ fontWeight: '700', marginLeft: 2 }}>{r.rating}</Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.meta} numberOfLines={1}>{r.tagline} · {r.address}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{[r.tagline, r.address].filter(Boolean).join(' · ')}</Text>
         <Text style={styles.meta}>~{eta} min · {peso(deliveryFee(km))} delivery</Text>
       </View>
     </Pressable>

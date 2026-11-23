@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import TypeStoreRow from '@/components/TypeStoreRow';
-import { usePrices, useStores } from '@/lib/api';
-import { PLACES } from '@/lib/data';
+import { usePrices } from '@/lib/api';
+import { landmarksNear, storeStop, useNearbyStores } from '@/lib/nearby';
 import { hasStore, MAX_STORES, useStore } from '@/lib/store';
 import { colors, peso, radius } from '@/lib/theme';
 import { Stop } from '@/lib/trips';
@@ -15,7 +15,7 @@ type Row = { key: string; title: string; subtitle: string; emoji?: string; stop:
 /** Adds another store to the pabili order being drafted. */
 export default function StorePicker() {
   const { state, addErrandStore } = useStore();
-  const { stores } = useStores();
+  const { stores } = useNearbyStores(state.home.location);
   const prices = usePrices();
   const [q, setQ] = useState('');
   const [locating, setLocating] = useState(false);
@@ -24,14 +24,15 @@ export default function StorePicker() {
     const s = q.trim().toLowerCase();
     const match = (text: string) => !s || text.toLowerCase().includes(s);
     const listed: Row[] = stores
-      .filter((r) => !hasStore(state.errand, { name: r.name, location: r.location }, r.id))
-      .filter((r) => match(`${r.name} ${r.tagline} ${r.category} ${r.favorites.join(' ')}`))
-      .map((r) => ({ key: r.id, title: r.name, subtitle: `${r.tagline} · ${r.address}`, emoji: r.emoji, stop: { name: r.name, location: r.location }, storeId: r.id }));
-    const places: Row[] = PLACES.filter((p) => match(`${p.name} ${p.area}`))
+      .map((r) => ({ r, ...storeStop(r) }))
+      .filter(({ stop, storeId }) => !hasStore(state.errand, stop, storeId))
+      .filter(({ r }) => match(`${r.name} ${r.tagline} ${r.category} ${r.favorites.join(' ')}`))
+      .map(({ r, stop, storeId }) => ({ key: r.id, title: r.name, subtitle: [r.tagline, r.address].filter(Boolean).join(' · '), emoji: r.emoji, stop, storeId }));
+    const places: Row[] = landmarksNear(state.home.location).filter((p) => match(`${p.name} ${p.area}`))
       .map((p) => ({ key: p.id, title: p.name, subtitle: p.area, stop: { name: `${p.name}, ${p.area}`, location: p.location }, storeId: null }))
       .filter((r) => !hasStore(state.errand, r.stop, null));
     return [
-      ...(listed.length ? [{ title: 'Stores', data: listed }] : []),
+      ...(listed.length ? [{ title: 'Stores within 1 km', data: listed }] : []),
       ...(places.length ? [{ title: 'Other places (malls, landmarks)', data: places }] : []),
     ];
   }, [q, stores, state.errand]);

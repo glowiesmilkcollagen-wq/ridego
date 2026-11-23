@@ -7,7 +7,7 @@ import TypeStoreRow from '@/components/TypeStoreRow';
 import { useStartErrand } from '@/components/useStartErrand';
 import { addressStop, markAddressUsed, SavedAddress, useSavedAddresses } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { PLACES } from '@/lib/data';
+import { landmarksNear } from '@/lib/nearby';
 import { Stop } from '@/lib/trips';
 import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
@@ -24,8 +24,9 @@ export default function PlaceSearch() {
 
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? PLACES.filter((p) => `${p.name} ${p.area}`.toLowerCase().includes(s)) : PLACES;
-  }, [q]);
+    const near = landmarksNear(state.home.location);
+    return s ? near.filter((p) => `${p.name} ${p.area}`.toLowerCase().includes(s)) : near;
+  }, [q, state.home.location]);
   const savedShown = useMemo(() => {
     const s = q.trim().toLowerCase();
     return s ? saved.addresses.filter((a) => `${a.label} ${a.details}`.toLowerCase().includes(s)) : saved.addresses;

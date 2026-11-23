@@ -15,6 +15,8 @@ export type Store = {
   address: string;
   /** Commonly bought items, shown as quick-add suggestions. Prices are not tracked: the rider pays at the store. */
   favorites: string[];
+  /** 'google': a real store near the customer from Google Maps (not in Pabili's store list). */
+  source?: 'google';
 };
 
 export type Category = 'Food' | 'Medicine' | 'Groceries' | 'Convenience' | 'Hardware' | 'Gifts' | 'Pets';

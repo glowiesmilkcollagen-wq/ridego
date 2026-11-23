@@ -1,21 +1,22 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StoreCard from '@/components/StoreCard';
 import TypeStoreRow from '@/components/TypeStoreRow';
 import { Chip, Empty } from '@/components/ui';
-import { useStores } from '@/lib/api';
 import { CATEGORIES, Category } from '@/lib/data';
-import { useStoreDistances } from '@/lib/routing';
+import { roadKm } from '@/lib/geo';
+import { NEARBY_KM, useNearbyStores } from '@/lib/nearby';
 import { errandCount, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
 export default function Pabili() {
   const { state } = useStore();
-  const { stores, loading } = useStores();
-  const kmFor = useStoreDistances(stores, state.home.location);
+  // Real stores within 1 km of the delivery address (Pabili's own + Google Maps), nearest first.
+  const { stores, loading } = useNearbyStores(state.home.location);
+  const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Category | null>(null);
   const count = errandCount(state.errand);
@@ -53,6 +54,7 @@ export default function Pabili() {
             </Pressable>
 
             <Text style={styles.h2}>Stores near you</Text>
+            <Text style={{ color: colors.muted, marginTop: -6, marginBottom: 10 }}>Within {NEARBY_KM} km of {state.home.name}</Text>
             <View style={styles.search}>
               <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
               <TextInput value={q} onChangeText={setQ} placeholder="Search stores or items" placeholderTextColor={colors.muted} style={styles.input} />
@@ -67,7 +69,11 @@ export default function Pabili() {
           </View>
         }
         renderItem={({ item }) => <StoreCard r={item} km={kmFor(item)} />}
-        ListEmptyComponent={loading ? undefined : <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or ask the rider to buy from the store you typed (above)" />}
+        ListEmptyComponent={
+          loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} /> : q.trim() || cat
+            ? <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or ask the rider to buy from the store you typed (above)" />
+            : <Empty icon="store-search-outline" title={`No stores found within ${NEARBY_KM} km`} subtitle="Tap “Buy from any store” above and type the store’s name — the rider can buy from any shop." />
+        }
       />
       {state.errand.stops.length > 0 && (
         <Pressable style={styles.cartBar} onPress={() => router.push('/order')}>
