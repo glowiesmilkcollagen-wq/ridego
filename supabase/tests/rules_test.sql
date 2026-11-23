@@ -319,3 +319,42 @@ select pg_temp.check((select count(*) from saved_addresses) = 20, 'other custome
 delete from saved_addresses where label = 'Office';
 select pg_temp.check((select count(*) from saved_addresses) = 19, 'owner can delete');
 reset role;
+
+\echo '22. two orders at once: only when no free rider is near and the order is on the way'
+reset role;
+delete from net.sent;
+update public.orders set status = 'cancelled' where status in ('searching', 'accepted', 'at_pickup', 'picked_up');
+-- Carcar City, Cebu. Rider R1 (b1) is the only rider online; its first job goes north (pickup P1 → drop-off D1).
+update public.riders set online = false where id <> '00000000-0000-0000-0000-0000000000b1';
+update public.riders set online = true, lat = 10.1000, lng = 123.6400, location_at = now() where id = '00000000-0000-0000-0000-0000000000b1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+insert into ctx select 'j1', (place_order('{"kind":"pasugo","cargo":"parcel","pickup":{"name":"P1","lat":10.1000,"lng":123.6400},"dropoff":{"name":"D1","lat":10.1500,"lng":123.6400},"km":6,"description":"bag"}')).id;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select accept_order((select v::uuid from ctx where k = 'j1'));
+-- On the way: pickup 0.5 km off the route, drop-off near D1, same direction.
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
+insert into ctx select 'j2', (place_order('{"kind":"pasugo","cargo":"parcel","pickup":{"name":"On the way","lat":10.1200,"lng":123.6445},"dropoff":{"name":"Near D1","lat":10.1480,"lng":123.6420},"km":4,"description":"folder"}')).id;
+-- Opposite way: drop-off south, behind the rider.
+insert into ctx select 'j3', (place_order('{"kind":"pasugo","cargo":"parcel","pickup":{"name":"South","lat":10.0950,"lng":123.6400},"dropoff":{"name":"Far south","lat":10.0400,"lng":123.6300},"km":7,"description":"folder"}')).id;
+reset role;
+select pg_temp.check(exists (select 1 from pushes where "to" = 'ExponentPushToken[rider-b1]' and title like 'New pasugo job on your way%'), 'busy rider alerted for the on-the-way job');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select pg_temp.check((select count(*) from my_second_jobs()) = 1 and (select id from my_second_jobs()) = (select v::uuid from ctx where k = 'j2'), 'second-job list shows only the on-the-way job');
+select pg_temp.expect_error($$select accept_order((select v::uuid from ctx where k = 'j3'))$$, 'not on your way');
+-- Another rider (a2) comes online, free and near: the busy rider can no longer take the extra job.
+reset role;
+update public.riders set status = 'approved', online = true, lat = 10.1210, lng = 123.6440, location_at = now() where id = '00000000-0000-0000-0000-0000000000a2';
+insert into public.riders (id, status, vehicle, plate, license_no, online, lat, lng, location_at)
+  select '00000000-0000-0000-0000-0000000000a2', 'approved', 'moto', 'FREE 1', 'L', true, 10.1210, 123.6440, now()
+  where not exists (select 1 from public.riders where id = '00000000-0000-0000-0000-0000000000a2');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select pg_temp.check((select count(*) from my_second_jobs()) = 0, 'no second jobs while a free rider is near');
+select pg_temp.expect_error($$select accept_order((select v::uuid from ctx where k = 'j2'))$$, 'Another rider is free');
+-- The free rider goes offline: now the busy rider can take it, but not a third one.
+reset role;
+update public.riders set online = false where id = '00000000-0000-0000-0000-0000000000a2';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
+select accept_order((select v::uuid from ctx where k = 'j2'));
+select pg_temp.check((select count(*) from orders where rider_id = auth.uid() and status = 'accepted') = 2, 'rider carries 2 orders');
+select pg_temp.expect_error($$select accept_order((select v::uuid from ctx where k = 'j3'))$$, 'at most 2 orders');
+reset role;

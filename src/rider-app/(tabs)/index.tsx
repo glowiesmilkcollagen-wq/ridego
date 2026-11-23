@@ -7,10 +7,12 @@ import { useRider } from '@/components/rider/RiderContext';
 import { useLocationSharing } from '@/components/rider/useLocationSharing';
 import { Button, Card, Empty, SectionTitle } from '@/components/ui';
 import {
-  acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, stopsOf, storesLabel, useCustomerProfile, useOpenJobs, useRiderOrders,
+  acceptOrder, ACTIVE_STATUSES, advanceOrder, Order, releaseOrder, setOnline, stopsOf, storesLabel, useCustomerProfile, useOpenJobs, useRiderOrders, useSecondJobs,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { distanceKm, LatLng } from '@/lib/geo';
 import { useMyLocation } from '@/lib/location';
+import { useRoute } from '@/lib/routing';
 import { deliveredSince, nextStepLabel, RIDER_TODO, summarize } from '@/lib/driver';
 import { percent } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
@@ -21,10 +23,13 @@ export default function Jobs() {
   const { userId, profile } = useAuth();
   const { rider, setRider } = useRider();
   const orders = useRiderOrders(userId);
-  const active = (orders.data ?? []).find((o) => ACTIVE_STATUSES.includes(o.status));
+  // A rider can carry up to 2 orders (the second only when it is on the way; the server checks).
+  const actives = (orders.data ?? []).filter((o) => ACTIVE_STATUSES.includes(o.status));
+  const active = actives[0];
   const online = !!rider?.online;
   const open = useOpenJobs(online && !active);
-  const locationProblem = useLocationSharing(online);
+  const second = useSecondJobs(online && actives.length === 1);
+  const locationProblem = useLocationSharing(online, actives.length > 0);
   const me = useMyLocation(true);
   const today = summarize(deliveredSince(orders.data ?? [], 'today'));
   const [busy, setBusy] = useState<string | null>(null);
@@ -39,6 +44,7 @@ export default function Jobs() {
       setBusy(null);
       orders.refresh();
       open.refresh();
+      second.refresh();
     }
   };
 
@@ -89,33 +95,22 @@ export default function Jobs() {
         )}
 
         {active ? (
-          <ActiveJob key={active.id} o={active} busy={busy} run={run} />
+          <>
+            {actives.map((o) => <ActiveJob key={o.id} o={o} busy={busy} run={run} me={me.location} />)}
+            {online && actives.length === 1 && (second.data ?? []).length > 0 && (
+              <View>
+                <SectionTitle>Also on your way</SectionTitle>
+                <Text style={{ color: colors.muted, marginBottom: 10, marginTop: -4 }}>
+                  No other rider is free near these jobs and they go your way. You can carry up to 2 orders.
+                </Text>
+                {(second.data ?? []).map((o) => <JobCard key={o.id} o={o} busy={busy} run={run} />)}
+              </View>
+            )}
+          </>
         ) : online ? (
           <View>
             <SectionTitle>Incoming requests</SectionTitle>
-            {(open.data ?? []).map((o) => (
-              <Card key={o.id} style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <MaterialCommunityIcons name={(o.kind === 'pabili' ? 'basket-outline' : cargoOf(o).icon) as any} size={22} color={o.kind === 'pabili' ? colors.primary : colors.ride} />
-                  <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{o.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {Number(o.km).toFixed(1)} km</Text>
-                  <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(Number(o.rider_earning))}</Text>
-                </View>
-                {o.kind === 'pabili'
-                  ? stopsOf(o).map((st, i) => <Text key={i} style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {st.name}</Text>)
-                  : <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {o.pickup_name}</Text>}
-                <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {o.dropoff_name}</Text>
-                {o.items ? <Text style={styles.line}>🛒 {o.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</Text> : null}
-                {o.store_count > 1 ? <Text style={[styles.line, { color: colors.primary, fontWeight: '700' }]}>{o.store_count} stores — buy at each, then deliver</Text> : null}
-                {o.description ? <Text style={styles.line}>{cargoOf(o).emoji} {o.description}</Text> : null}
-                <Text style={[styles.line, { color: colors.muted }]}>
-                  {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}
-                </Text>
-                <Text style={[styles.line, { color: colors.muted }]}>
-                  Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · {o.commission_waived ? 'beta: you keep 100%, no commission' : `your ${percent(Number(o.rider_share))} share ${peso(Number(o.rider_earning))}`}
-                </Text>
-                <Button title="Accept" color={colors.ride} style={{ marginTop: 10 }} loading={busy === o.id} onPress={() => run(o.id, () => acceptOrder(o.id))} />
-              </Card>
-            ))}
+            {(open.data ?? []).map((o) => <JobCard key={o.id} o={o} busy={busy} run={run} />)}
             {open.loaded && !(open.data ?? []).length && <Text style={{ color: colors.muted, textAlign: 'center' }}>No requests right now. New ones appear here automatically.</Text>}
           </View>
         ) : (
@@ -125,6 +120,44 @@ export default function Jobs() {
     </SafeAreaView>
   );
 }
+
+type Run = (key: string, fn: () => Promise<unknown>) => void;
+
+/** A waiting job the rider can accept. */
+function JobCard({ o, busy, run }: { o: Order; busy: string | null; run: Run }) {
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <MaterialCommunityIcons name={(o.kind === 'pabili' ? 'basket-outline' : cargoOf(o).icon) as any} size={22} color={o.kind === 'pabili' ? colors.primary : colors.ride} />
+        <Text style={{ fontWeight: '800', marginLeft: 8, flex: 1, color: colors.text }}>{o.kind === 'pabili' ? 'Pabili' : 'Pasugo'} · {Number(o.km).toFixed(1)} km</Text>
+        <Text style={{ fontWeight: '800', fontSize: 18, color: colors.ride }}>{peso(Number(o.rider_earning))}</Text>
+      </View>
+      {o.kind === 'pabili'
+        ? stopsOf(o).map((st, i) => <Text key={i} style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {st.name}</Text>)
+        : <Text style={styles.line}><Text style={{ color: colors.ride }}>●</Text>  {o.pickup_name}</Text>}
+      <Text style={styles.line}><Text style={{ color: colors.primary }}>●</Text>  {o.dropoff_name}</Text>
+      {o.items ? <Text style={styles.line}>🛒 {o.items.map((i) => `${i.qty}× ${i.name}`).join(', ')}</Text> : null}
+      {o.store_count > 1 ? <Text style={[styles.line, { color: colors.primary, fontWeight: '700' }]}>{o.store_count} stores — buy at each, then deliver</Text> : null}
+      {o.description ? <Text style={styles.line}>{cargoOf(o).emoji} {o.description}</Text> : null}
+      <Text style={[styles.line, { color: colors.muted }]}>
+        {o.customer_name || 'Customer'}{o.kind === 'pabili' ? ' · you pay at the store' : ''}
+      </Text>
+      <Text style={[styles.line, { color: colors.muted }]}>
+        Fee {peso(Number(o.base_fee))} ({PAYMENT_LABELS[o.payment]}) · {o.commission_waived ? 'beta: you keep 100%, no commission' : `your ${percent(Number(o.rider_share))} share ${peso(Number(o.rider_earning))}`}
+      </Text>
+      <Button title="Accept" color={colors.ride} style={{ marginTop: 10 }} loading={busy === o.id} onPress={() => run(o.id, () => acceptOrder(o.id))} />
+    </Card>
+  );
+}
+
+/** Where the rider should go next: the (first) store or pickup until picked up, then the customer. */
+function nextStop(o: Order): { coord: LatLng; name: string; kind: 'store' | 'pickup' | 'dropoff' } {
+  if (o.status === 'picked_up') return { coord: { latitude: o.dropoff_lat, longitude: o.dropoff_lng }, name: o.dropoff_name, kind: 'dropoff' };
+  return { coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, name: o.pickup_name, kind: o.kind === 'pabili' ? 'store' : 'pickup' };
+}
+
+/** Rounds a position to about 300 m, so the road route is refreshed as the rider moves without asking on every step. */
+const coarse = (p: LatLng | null) => (p ? { latitude: Math.round(p.latitude / 0.003) * 0.003, longitude: Math.round(p.longitude / 0.003) * 0.003 } : null);
 
 /** The main Navigate button: the (first) store or pickup until picked up, then the customer. */
 function openNavigation(o: Order) {
@@ -152,7 +185,7 @@ const call = (phone?: string | null) => {
   if (p) Linking.openURL(`tel:${p}`);
 };
 
-function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key: string, fn: () => Promise<unknown>) => void }) {
+function ActiveJob({ o, busy, run, me }: { o: Order; busy: string | null; run: Run; me: LatLng | null }) {
   const customer = useCustomerProfile(o.customer_id);
   const [receipt, setReceipt] = useState('');
   const pabili = o.kind === 'pabili';
@@ -167,21 +200,39 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
 
   const advance = () => {
     if (buying && !receiptValue) return Alert.alert('Enter the receipt total', 'Type how much you paid at the store, as shown on the receipt.');
-    run('advance', () => advanceOrder(o.id, buying ? receiptValue : undefined));
+    run(`advance-${o.id}`, () => advanceOrder(o.id, buying ? receiptValue : undefined));
   };
+  // Live road route from where the rider is now to the next stop.
+  const goTo = nextStop(o);
+  const from = coarse(me);
+  const { route: liveRoute } = useRoute(from, goTo.coord);
+  const kmLeft = me ? (liveRoute?.km ?? distanceKm(me, goTo.coord) * 1.3) : null;
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <MapPreview
-        height={200}
+        height={240}
+        showsUserLocation
         pins={[
-          ...(pabili
-            ? stopsOf(o).map((st, i) => ({ id: `s${i}`, coord: { latitude: st.lat, longitude: st.lng }, kind: 'store' as const }))
-            : [{ id: 'p', coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: 'pickup' as const }]),
+          ...(me ? [{ id: 'me', coord: me, kind: 'rider' as const }] : []),
+          ...(o.status === 'picked_up'
+            ? []
+            : pabili
+              ? stopsOf(o).map((st, i) => ({ id: `s${i}`, coord: { latitude: st.lat, longitude: st.lng }, kind: 'store' as const }))
+              : [{ id: 'p', coord: { latitude: o.pickup_lat, longitude: o.pickup_lng }, kind: 'pickup' as const }]),
           { id: 'd', coord: { latitude: o.dropoff_lat, longitude: o.dropoff_lng }, kind: 'dropoff' },
         ]}
-        path={o.path?.length ? o.path : [{ latitude: o.pickup_lat, longitude: o.pickup_lng }, { latitude: o.dropoff_lat, longitude: o.dropoff_lng }]}
+        // From the rider to the next stop when we know where the rider is; otherwise the whole trip.
+        path={me && liveRoute ? [me, ...liveRoute.path, goTo.coord] : o.path?.length ? o.path : [{ latitude: o.pickup_lat, longitude: o.pickup_lng }, { latitude: o.dropoff_lat, longitude: o.dropoff_lng }]}
       />
+      {me && kmLeft != null && (
+        <View style={styles.nextBar}>
+          <MaterialCommunityIcons name="navigation-variant" size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '700', flex: 1, marginLeft: 8 }} numberOfLines={1}>
+            {kmLeft < 0.15 ? 'You are here' : `${kmLeft.toFixed(1)} km to ${goTo.kind === 'dropoff' ? 'the customer' : goTo.kind === 'store' ? 'the store' : 'the pickup'}`} · {goTo.name}
+          </Text>
+        </View>
+      )}
       <View style={{ padding: 16 }}>
         <Text style={{ color: colors.ride, fontWeight: '800' }}>{o.kind === 'pabili' && o.store_count > 1 && o.status === 'at_pickup' ? `Buy at all ${o.store_count} stores, keep every receipt` : RIDER_TODO[o.status]?.[o.kind]}</Text>
         <Text style={{ fontWeight: '800', fontSize: 18, marginTop: 4, color: colors.text }}>{o.status === 'picked_up' ? o.dropoff_name : pabili ? storesLabel(o) : o.pickup_name}</Text>
@@ -237,14 +288,14 @@ function ActiveJob({ o, busy, run }: { o: Order; busy: string | null; run: (key:
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Button title="Navigate" icon="navigation-variant" variant="outline" color={colors.text} style={{ flex: 1 }} onPress={() => openNavigation(o)} />
-          {next && <Button title={next} color={colors.ride} style={{ flex: 1.4 }} onPress={advance} loading={busy === 'advance'} />}
+          {next && <Button title={next} color={colors.ride} style={{ flex: 1.4 }} onPress={advance} loading={busy === `advance-${o.id}`} />}
         </View>
         {o.status === 'accepted' && (
           <Button
             title="Drop job" variant="ghost" color={colors.danger} style={{ marginTop: 6 }}
             onPress={() => Alert.alert('Drop this job?', 'It goes back to other riders. Frequent drops lower your acceptance rate.', [
               { text: 'Keep job', style: 'cancel' },
-              { text: 'Drop', style: 'destructive', onPress: () => run('drop', () => releaseOrder(o.id)) },
+              { text: 'Drop', style: 'destructive', onPress: () => run(`drop-${o.id}`, () => releaseOrder(o.id)) },
             ])}
           />
         )}
@@ -284,6 +335,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   h1: { fontSize: 26, fontWeight: '800', color: colors.text },
+  nextBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.ride, paddingHorizontal: 14, paddingVertical: 10 },
   status: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: colors.border },
   line: { marginTop: 3, color: colors.text },

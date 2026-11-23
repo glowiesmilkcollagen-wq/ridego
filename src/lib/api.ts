@@ -367,6 +367,15 @@ export const advanceOrder = async (id: string, receipt?: number) => must(await s
 export const releaseOrder = async (id: string) => must(await supabase.rpc('release_order', { p_id: id })) as Order;
 
 /** Open jobs a rider can take (the database only returns them while the rider is approved and online). */
+/** For a rider carrying one order: waiting jobs that are on the way and have no free rider near (max 2 orders). */
+export function useSecondJobs(enabled: boolean) {
+  return useLive<Order[]>(
+    async () => must(await supabase.rpc('my_second_jobs')) as Order[],
+    [],
+    { enabled, table: 'orders', filter: 'status=eq.searching', pollMs: 20_000, livePollMs: 20_000 },
+  );
+}
+
 export function useOpenJobs(enabled: boolean) {
   return useLive<Order[]>(
     async () => must(await supabase.from('orders').select('*').eq('status', 'searching').order('created_at').limit(30)) as Order[],

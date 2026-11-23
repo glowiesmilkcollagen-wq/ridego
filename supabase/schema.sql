@@ -732,7 +732,21 @@ begin
         into msgs
       from public.riders r join public.push_tokens t on t.user_id = r.id and t.app = 'rider'
       where r.status = 'approved' and r.online
-        and (r.lat is null or public.km_between(r.lat, r.lng, new.pickup_lat, new.pickup_lng) <= 15);
+        and (r.lat is null or public.km_between(r.lat, r.lng, new.pickup_lat, new.pickup_lng) <= 15)
+        and not exists (select 1 from public.orders x where x.rider_id = r.id and x.status in ('accepted', 'at_pickup', 'picked_up'));
+      -- No free rider near: offer it to busy riders it is on the way for (they may carry 2 orders).
+      if not private.free_rider_near(new, null) then
+        msgs := msgs || coalesce((
+          select jsonb_agg(jsonb_build_object('to', t.token,
+            'title', format('New %s job on your way · ₱%s', what, round(new.rider_earning)),
+            'body', format('%s → %s · you can take it with your current order', new.pickup_name, new.dropoff_name),
+            'data', d || '{"type":"job"}', 'sound', 'default', 'priority', 'high', 'channelId', 'jobs'))
+          from public.riders r
+          join public.push_tokens t on t.user_id = r.id and t.app = 'rider'
+          where r.status = 'approved' and r.online
+            and (select count(*) from public.orders x where x.rider_id = r.id and x.status in ('accepted', 'at_pickup', 'picked_up')) = 1
+            and private.on_the_way(r, (select x from public.orders x where x.rider_id = r.id and x.status in ('accepted', 'at_pickup', 'picked_up') limit 1), new)), '[]'::jsonb);
+      end if;
     end if;
   elsif new.status is distinct from old.status then
     select split_part(full_name, ' ', 1) into rider_name from public.profiles where id = new.rider_id;
@@ -846,3 +860,114 @@ language sql security definer set search_path = public as $$
 $$;
 revoke execute on function public.save_address(text, text, double precision, double precision), public.use_address(uuid) from public, anon;
 grant execute on function public.save_address(text, text, double precision, double precision), public.use_address(uuid) to authenticated;
+
+-- ============================================================================
+-- Two orders at once: a busy rider may take ONE more order, only when no free rider is near
+-- its pickup and it is on the way (pickup near the rider's current route, drop-off near the route
+-- or the first drop-off, and not behind them).
+-- ============================================================================
+-- Distance in km from P to the segment A–B (flat approximation; fine for city distances).
+create or replace function private.km_to_segment(plat double precision, plng double precision,
+  alat double precision, alng double precision, blat double precision, blng double precision)
+returns double precision language sql immutable set search_path = '' as $$
+  with k as (select 111.32 * cos(radians(alat)) as kx, 110.57 as ky),
+  v as (select (blng - alng) * kx as bx, (blat - alat) * ky as by, (plng - alng) * kx as px, (plat - alat) * ky as py from k),
+  t as (select bx, by, px, py, case when bx * bx + by * by = 0 then 0
+          else greatest(0, least(1, (px * bx + py * by) / (bx * bx + by * by))) end as t from v)
+  select sqrt(power(px - t * bx, 2) + power(py - t * by, 2)) from t;
+$$;
+-- How far along A→B the point P lies (0 = at A, 1 = at B; can be <0 or >1).
+create or replace function private.along(plat double precision, plng double precision,
+  alat double precision, alng double precision, blat double precision, blng double precision)
+returns double precision language sql immutable set search_path = '' as $$
+  with k as (select 111.32 * cos(radians(alat)) as kx, 110.57 as ky),
+  v as (select (blng - alng) * kx as bx, (blat - alat) * ky as by, (plng - alng) * kx as px, (plat - alat) * ky as py from k)
+  select case when bx * bx + by * by = 0 then 0 else (px * bx + py * by) / (bx * bx + by * by) end from v;
+$$;
+
+-- Is order `nxt` on the way for rider `r` who is carrying order `first`?
+create or replace function private.on_the_way(r public.riders, first public.orders, nxt public.orders)
+returns boolean language plpgsql stable set search_path = public as $$
+declare
+  fresh boolean := r.lat is not null and r.location_at > now() - interval '10 minutes';
+  alat double precision := case when fresh then r.lat else first.pickup_lat end;
+  alng double precision := case when fresh then r.lng else first.pickup_lng end;
+  going_to_pickup boolean := first.status = 'accepted';
+  d_pick double precision;
+  d_drop double precision;
+begin
+  -- The rider's remaining route: (now →) first pickup → first drop-off.
+  d_pick := private.km_to_segment(nxt.pickup_lat, nxt.pickup_lng, first.pickup_lat, first.pickup_lng, first.dropoff_lat, first.dropoff_lng);
+  d_drop := private.km_to_segment(nxt.dropoff_lat, nxt.dropoff_lng, first.pickup_lat, first.pickup_lng, first.dropoff_lat, first.dropoff_lng);
+  if going_to_pickup and fresh then
+    d_pick := least(d_pick, private.km_to_segment(nxt.pickup_lat, nxt.pickup_lng, alat, alng, first.pickup_lat, first.pickup_lng));
+  elsif fresh then
+    -- Already carrying the first order: only what is still ahead counts.
+    d_pick := private.km_to_segment(nxt.pickup_lat, nxt.pickup_lng, alat, alng, first.dropoff_lat, first.dropoff_lng);
+    d_drop := private.km_to_segment(nxt.dropoff_lat, nxt.dropoff_lng, alat, alng, first.dropoff_lat, first.dropoff_lng);
+  end if;
+  return d_pick <= 1.5
+    and (d_drop <= 2.0 or public.km_between(nxt.dropoff_lat, nxt.dropoff_lng, first.dropoff_lat, first.dropoff_lng) <= 2.0)
+    -- Same direction: the new drop-off is not behind its pickup on the way to the first drop-off.
+    and private.along(nxt.dropoff_lat, nxt.dropoff_lng, alat, alng, first.dropoff_lat, first.dropoff_lng)
+        >= private.along(nxt.pickup_lat, nxt.pickup_lng, alat, alng, first.dropoff_lat, first.dropoff_lng) - 0.1;
+end $$;
+
+-- A free (no job), online rider with a recent position within 10 km of the order's pickup, other than `me`.
+create or replace function private.free_rider_near(o public.orders, me uuid) returns boolean
+language sql stable set search_path = public as $$
+  select exists (
+    select 1 from public.riders r
+    where r.id is distinct from me and r.status = 'approved' and r.online
+      and r.lat is not null and r.location_at > now() - interval '10 minutes'
+      and public.km_between(r.lat, r.lng, o.pickup_lat, o.pickup_lng) <= 10
+      and not exists (select 1 from public.orders x where x.rider_id = r.id and x.status in ('accepted', 'at_pickup', 'picked_up')));
+$$;
+
+create or replace function public.accept_order(p_id uuid) returns public.orders
+language plpgsql security definer set search_path = public as $$
+declare
+  r public.riders := private.my_rider();
+  o public.orders;
+  first public.orders;
+  n int;
+begin
+  if r.id is null or r.status <> 'approved' then raise exception 'Your rider account is not approved yet'; end if;
+  if not r.online then raise exception 'Go online to accept jobs'; end if;
+  select count(*) into n from public.orders where rider_id = r.id and status in ('accepted', 'at_pickup', 'picked_up');
+  if n >= 2 then raise exception 'You can carry at most 2 orders at a time'; end if;
+  if n = 1 then
+    select * into first from public.orders where rider_id = r.id and status in ('accepted', 'at_pickup', 'picked_up') limit 1;
+    select * into o from public.orders where id = p_id and status = 'searching';
+    if not found then raise exception 'This job was already taken or cancelled'; end if;
+    if private.free_rider_near(o, r.id) then raise exception 'Another rider is free for this job. Finish your current job first'; end if;
+    if not private.on_the_way(r, first, o) then raise exception 'This job is not on your way. Finish your current job first'; end if;
+  end if;
+  update public.orders set rider_id = r.id, status = 'accepted', accepted_at = now()
+  where id = p_id and status = 'searching' and (vehicle = r.vehicle or kind = 'pabili')
+  returning * into o;
+  if not found then raise exception 'This job was already taken or cancelled'; end if;
+  return o;
+end $$;
+
+-- Jobs a busy rider (one order) may add: waiting, on the way, and no free rider near.
+create or replace function public.my_second_jobs() returns setof public.orders
+language plpgsql stable security definer set search_path = public as $$
+declare
+  r public.riders := private.my_rider();
+  first public.orders;
+begin
+  if r.id is null or r.status <> 'approved' or not r.online then return; end if;
+  if (select count(*) from public.orders where rider_id = r.id and status in ('accepted', 'at_pickup', 'picked_up')) <> 1 then return; end if;
+  select * into first from public.orders where rider_id = r.id and status in ('accepted', 'at_pickup', 'picked_up') limit 1;
+  return query
+    select o.* from public.orders o
+    where o.status = 'searching' and (o.vehicle = r.vehicle or o.kind = 'pabili')
+      and not private.free_rider_near(o, r.id) and private.on_the_way(r, first, o)
+    order by o.created_at limit 10;
+end $$;
+revoke execute on function public.my_second_jobs() from public, anon;
+grant execute on function public.my_second_jobs() to authenticated;
+revoke execute on function private.km_to_segment(double precision, double precision, double precision, double precision, double precision, double precision),
+  private.along(double precision, double precision, double precision, double precision, double precision, double precision),
+  private.on_the_way(public.riders, public.orders, public.orders), private.free_rider_near(public.orders, uuid) from public, anon, authenticated;

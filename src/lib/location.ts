@@ -35,6 +35,11 @@ export function locateMe(): Promise<LatLng | null> {
   return inflight;
 }
 
+/** Lets the rider's live tracking share each new position with the maps on screen. */
+export function setMyLocation(p: LatLng) {
+  set(p);
+}
+
 function set(p: LatLng) {
   current = p;
   listeners.forEach((f) => f());

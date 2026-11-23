@@ -6,7 +6,9 @@ import MapPreview from '@/components/MapPreview';
 import { MapPin } from '@/components/MapPreview.types';
 import { Button, Card, Empty, Row, SectionTitle } from '@/components/ui';
 import { cancelOrder, isOpen, Order, rateOrder, stopsOf, useOrder } from '@/lib/api';
+import { distanceKm } from '@/lib/geo';
 import { VEHICLE_LABEL } from '@/lib/pricing';
+import { useNow } from '@/lib/store';
 import { errorText } from '@/lib/supabase';
 import { canCustomerCancel, cargoOf, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
@@ -14,6 +16,7 @@ import { colors, peso } from '@/lib/theme';
 export default function Track() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { order: o, loading, rider, riderProfile, refresh } = useOrder(id);
+  const now = useNow(5000); // keeps "updated … ago" fresh
   const [busy, setBusy] = useState(false);
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>;
@@ -58,6 +61,17 @@ export default function Track() {
       <Stack.Screen options={{ title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}` }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 32 }}>
         <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon="motorbike" />
+        {live && o.status !== 'searching' && (
+          <View style={[styles.liveBar, { backgroundColor: accent }]}>
+            <MaterialCommunityIcons name={riderPos ? 'motorbike' : 'crosshairs-question'} size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 8, flex: 1 }} numberOfLines={1}>
+              {riderPos
+                ? `${riderProfile?.full_name?.split(' ')[0] || 'Your rider'} is ${riderKmText(distanceKm(riderPos, o.status === 'picked_up' ? dropoff : pickup))} ${o.status === 'picked_up' ? 'from you' : pabili ? 'from the store' : 'from the pickup'}`
+                : 'Waiting for the rider’s location…'}
+            </Text>
+            {riderPos && rider?.location_at ? <Text style={{ color: '#fff', opacity: 0.9, fontSize: 12 }}>{agoText(now - new Date(rider.location_at).getTime())}</Text> : null}
+          </View>
+        )}
 
         <View style={{ padding: 16, gap: 14 }}>
           <Card>
@@ -191,7 +205,11 @@ function StopLine({ icon, color, title, text }: { icon: string; color: string; t
   );
 }
 
+const riderKmText = (km: number) => (km < 0.1 ? 'right there' : km < 1 ? `${Math.round(km * 1000 / 10) * 10} m` : `${km.toFixed(1)} km`);
+const agoText = (ms: number) => (ms < 60_000 ? 'live' : ms < 3_600_000 ? `${Math.round(ms / 60_000)} min ago` : 'over an hour ago');
+
 const styles = StyleSheet.create({
+  liveBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
   status: { fontSize: 22, fontWeight: '800' },
   bar: { flexDirection: 'row', gap: 6, marginTop: 14 },
   seg: { flex: 1, height: 6, borderRadius: 3 },

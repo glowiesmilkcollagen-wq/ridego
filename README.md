@@ -18,11 +18,14 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
   (Admin → Fees & commission). Write the shopping list;
   a rider buys it with their own money and brings it. The customer repays the receipt amount plus the delivery fee — **the app only charges the delivery fee.**
 - **Pasugo** — a rider picks up a document, a bag or a package and brings it to you or anywhere (nothing to buy). Motorcycles only.
-- Promo codes, live tracking with the rider's real GPS position, call/text the rider, cancel (before the rider starts), rate.
+- Promo codes, live tracking (the rider's position updates every few seconds, with how far they are), call/text the rider, cancel (before the rider starts), rate.
 - Pays in **cash** for now (GCash/card show as "coming soon").
 
 **RideGo Rider**
 - Sign up → RideGo approves → go online → jobs appear live → accept → step through (arrived → bought/picked up → delivered).
+- Live map: the rider's position, the road route from where they are to the next stop, and the distance left.
+- **Up to 2 orders at once**: a second order is offered only when no free rider is within 10 km of it and it is on the way
+  (pickup within 1.5 km of the rider's route, drop-off near the route or the first drop-off, not behind them). The server enforces this.
 - **Navigate** with Google Maps, Waze or Apple Maps. Calls the customer / pickup contact / receiver.
 - Shares GPS while online so customers can follow the rider.
 - Shows exactly what to collect, and **earnings**: today / week / all time, the rider's share, and how much cash they owe RideGo.
