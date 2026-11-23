@@ -5,7 +5,7 @@ import { distanceKm, LatLng } from './geo';
 import { supabase, supabaseConfigured } from './supabase';
 
 /** Stores shown to the customer are the ones within this distance (straight line) of the delivery address. */
-export const NEARBY_KM = 1;
+export const NEARBY_KM = 3;
 
 type Place = { id: string; name: string; address: string; lat: number; lng: number; type: string };
 
@@ -62,10 +62,10 @@ function toStore(p: Place): Store {
   };
 }
 
-// One request per ~500 m area while the app is open (the server also caches for a day).
+// One request per ~1 km area while the app is open (the server also caches for a day).
 const cache = new Map<string, Promise<Place[]>>();
 function fetchPlaces(at: LatLng): Promise<Place[]> {
-  const key = `${(Math.round(at.latitude / 0.005) * 0.005).toFixed(3)},${(Math.round(at.longitude / 0.005) * 0.005).toFixed(3)}`;
+  const key = `${(Math.round(at.latitude / 0.01) * 0.01).toFixed(2)},${(Math.round(at.longitude / 0.01) * 0.01).toFixed(2)}`;
   let p = cache.get(key);
   if (!p) {
     p = supabase.functions
@@ -84,7 +84,7 @@ function fetchPlaces(at: LatLng): Promise<Place[]> {
 }
 
 /**
- * Stores within 1 km of `at`: Pabili's own stores plus real stores from Google Maps, nearest first.
+ * Stores within 3 km of `at`: Pabili's own stores plus real stores from Google Maps, nearest first.
  * `far` is how many of Pabili's own stores were left out for being farther away.
  */
 export function useNearbyStores(at: LatLng) {

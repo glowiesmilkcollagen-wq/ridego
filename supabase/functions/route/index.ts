@@ -165,13 +165,14 @@ const PLACE_GROUPS: string[][] = [
   ['pharmacy', 'drugstore', 'convenience_store', 'grocery_store', 'supermarket', 'market', 'hardware_store', 'home_improvement_store', 'florist', 'gift_shop', 'pet_store'],
 ];
 const PLACES_CACHE_HOURS = 24;
-const PLACES_RADIUS_M = 1500; // searched around a ~500 m grid cell; the app keeps only stores within 1 km of the customer
+const PLACES_RADIUS_M = 3800; // searched around a ~1 km grid cell; the app keeps only stores within 3 km of the customer
 
 type Place = { id: string; name: string; address: string; lat: number; lng: number; type: string };
 
 async function googlePlaces(center: P): Promise<Place[]> {
   const out = new Map<string, Place>();
-  for (const includedTypes of PLACE_GROUPS) {
+  // For each group: the 20 nearest (small shops next door) and the 20 most popular (well-known stores further out).
+  for (const includedTypes of PLACE_GROUPS) for (const rankPreference of ['DISTANCE', 'POPULARITY']) {
     const body = await fetchJson('https://places.googleapis.com/v1/places:searchNearby', {
       method: 'POST',
       headers: {
@@ -180,7 +181,7 @@ async function googlePlaces(center: P): Promise<Place[]> {
         'X-Goog-FieldMask': 'places.id,places.displayName,places.shortFormattedAddress,places.location,places.primaryType',
       },
       body: JSON.stringify({
-        includedTypes, maxResultCount: 20, rankPreference: 'DISTANCE', languageCode: 'en', regionCode: 'PH',
+        includedTypes, maxResultCount: 20, rankPreference, languageCode: 'en', regionCode: 'PH',
         locationRestriction: { circle: { center: { latitude: center[0], longitude: center[1] }, radius: PLACES_RADIUS_M } },
       }),
     });
@@ -235,9 +236,9 @@ Deno.serve(async (req) => {
       const at = body.at;
       if (!inPH(at)) return json({ error: 'Bad points' }, 400);
       if (!GOOGLE_KEY) return json({ places: [], source: 'none' });
-      // One search per ~500 m grid cell per day, shared by everyone in that area.
-      const cell: P = [Math.round(at[0] / 0.005) * 0.005, Math.round(at[1] / 0.005) * 0.005];
-      const key = `pl:${cell[0].toFixed(3)},${cell[1].toFixed(3)}`;
+      // One search per ~1 km grid cell per day, shared by everyone in that area.
+      const cell: P = [Math.round(at[0] / 0.01) * 0.01, Math.round(at[1] / 0.01) * 0.01];
+      const key = `pl3:${cell[0].toFixed(2)},${cell[1].toFixed(2)}`;
       const since = new Date(Date.now() - PLACES_CACHE_HOURS * 3600e3).toISOString();
       const { data: hit } = await db.from('route_cache').select('path').eq('key', key).gte('created_at', since).maybeSingle();
       if (hit?.path) return json({ places: hit.path, source: 'google', cached: true });

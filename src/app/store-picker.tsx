@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import TypeStoreRow from '@/components/TypeStoreRow';
 import { usePrices } from '@/lib/api';
-import { landmarksNear, storeStop, useNearbyStores } from '@/lib/nearby';
+import { landmarksNear, NEARBY_KM, storeStop, useNearbyStores } from '@/lib/nearby';
 import { hasStore, MAX_STORES, useStore } from '@/lib/store';
 import { colors, peso, radius } from '@/lib/theme';
 import { Stop } from '@/lib/trips';
@@ -32,7 +32,7 @@ export default function StorePicker() {
       .map((p) => ({ key: p.id, title: p.name, subtitle: p.area, stop: { name: `${p.name}, ${p.area}`, location: p.location }, storeId: null }))
       .filter((r) => !hasStore(state.errand, r.stop, null));
     return [
-      ...(listed.length ? [{ title: 'Stores within 1 km', data: listed }] : []),
+      ...(listed.length ? [{ title: `Stores within ${NEARBY_KM} km`, data: listed }] : []),
       ...(places.length ? [{ title: 'Other places (malls, landmarks)', data: places }] : []),
     ];
   }, [q, stores, state.errand]);
