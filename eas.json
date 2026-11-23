@@ -27,6 +27,7 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "rider-production": {}
   }
 }
