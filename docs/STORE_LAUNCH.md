@@ -84,7 +84,7 @@ Searches are cached per ~1 km area for a day. Check usage in Google Cloud → Bi
 ## Store texts (ready to paste)
 
 ### Pabili (customers)
-- **Name (store listing)**: RideGOPH: Pabili  (the name under the icon on the phone stays "Pabili")
+- **Name (store listing)**: RideGoPH: Pabili — same on the App Store and Google Play (the name under the icon on the phone stays "Pabili")
 - **Subtitle (iOS, 30 chars)**: We buy it. We bring it.
 - **Short description (Play, 80 chars)**: Pabili from any store, or send documents and parcels across town by motorcycle.
 - **Category**: Food & Drink (iOS) / Food & Drink (Play). Alternative: Lifestyle.
