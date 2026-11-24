@@ -43,8 +43,8 @@
     "build:admin": "APP_VARIANT=admin expo export --platform web --output-dir dist-admin",
     "deploy:admin": "npm run build:admin && npx eas-cli@latest deploy --prod --export-dir dist-admin",
     "test:db": "supabase/tests/run.sh",
-    "update:customer": "eas update --channel production --auto && eas update --channel preview --auto",
-    "update:rider": "APP_VARIANT=rider eas update --channel rider-production --auto && APP_VARIANT=rider eas update --channel rider-preview --auto"
+    "update:customer": "npx eas-cli@latest update --channel production --auto && npx eas-cli@latest update --channel preview --auto",
+    "update:rider": "APP_VARIANT=rider npx eas-cli@latest update --channel rider-production --auto && APP_VARIANT=rider npx eas-cli@latest update --channel rider-preview --auto"
   },
   "private": true
 }
