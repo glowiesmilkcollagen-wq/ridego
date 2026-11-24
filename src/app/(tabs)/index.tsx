@@ -14,6 +14,9 @@ import { featuredStores, NEARBY_KM, useNearbyStores } from '@/lib/nearby';
 import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
+/** Home shows only the 5 nearest featured brands. */
+const HOME_FEATURED = 5;
+
 export default function Home() {
   const { state } = useStore();
   const { userId, profile } = useAuth();
@@ -22,8 +25,9 @@ export default function Home() {
   const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const active = (orders.data ?? []).filter(isOpen);
   const first = (profile?.full_name || 'there').split(' ')[0];
-  // Featured: the nearest branch of each big chain (Jollibee, SM, Mercury Drug, CitiHardware…) within 6 km.
-  const topPerCategory = featuredStores(stores);
+  // Featured: the nearest branch of each big chain (Jollibee, SM, Mercury Drug, CitiHardware…) within 6 km;
+  // only the 5 nearest brands are shown. The rest are in Pabili → ⭐ Featured.
+  const topPerCategory = featuredStores(stores).slice(0, HOME_FEATURED);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
