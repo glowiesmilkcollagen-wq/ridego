@@ -46,14 +46,14 @@ select pg_temp.check((select count(*) from promotions) = 0, 'customer cannot lis
 \echo '2. customer places a pabili order; the server computes the fee (+₱20 per store) and the 80% rider share'
 insert into ctx select 'o1', (place_order('{"kind":"pabili","pickup":{"name":"Crispy Coop","lat":14.5503,"lng":121.0287},
   "dropoff":{"name":"Ortigas Center","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"6pc Bucket","qty":1}],"payment":"cash"}')).id;
-select pg_temp.check((select fee from orders where id = (select v::uuid from ctx where k = 'o1')) = 123, 'pabili fee = 49 + (7.4-2)*10 + 20 (1 store) = 123');
-select pg_temp.check((select rider_earning from orders where id = (select v::uuid from ctx where k = 'o1')) = 98, 'rider earning = round(123*0.8) = 98');
+select pg_temp.check((select fee from orders where id = (select v::uuid from ctx where k = 'o1')) = 136, 'pabili fee = 20 + (7.4-1)*15 + 20 (1 store) = 136');
+select pg_temp.check((select rider_earning from orders where id = (select v::uuid from ctx where k = 'o1')) = 109, 'rider earning = round(136*0.8) = 109');
 select pg_temp.check((select customer_name from orders where id = (select v::uuid from ctx where k = 'o1')) = 'Ana', 'first name stored for rider');
 select pg_temp.expect_error($$select place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.55,"lng":121.02},"dropoff":{"name":"b","lat":14.58,"lng":121.06},"km":5,"items":[]}')$$, 'at least one item');
 -- Blocked updates change 0 rows (no error), so try it and then check nothing changed.
 update orders set fee = 1 where true;
 reset role;
-select pg_temp.check((select fee from orders where id = (select v::uuid from ctx where k = 'o1')) = 123, 'customer cannot change the fee directly');
+select pg_temp.check((select fee from orders where id = (select v::uuid from ctx where k = 'o1')) = 136, 'customer cannot change the fee directly');
 
 \echo '3. a too-small distance from the app is corrected to at least the straight-line distance'
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
@@ -123,7 +123,7 @@ select pg_temp.check((select count(*) from riders) = 0, 'customer no longer sees
 
 \echo '10. cash balance: rider holds the whole fee and owes the company 20%'
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-select pg_temp.check(rider_balance(auth.uid()) = 25, 'owes 123 - 98 = 25');
+select pg_temp.check(rider_balance(auth.uid()) = 27, 'owes 136 - 109 = 27');
 select pg_temp.check(rider_balance('00000000-0000-0000-0000-0000000000a2') is null, 'cannot read another rider balance');
 
 \echo '11. promotions: admin creates; discount applies once per customer; rider earning is unaffected'
@@ -131,8 +131,8 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
 insert into promotions (code, description, discount_type, value, max_discount) values ('WELCOME50', '50% off', 'percent', 50, 30);
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 insert into ctx select 'o2', (place_order('{"kind":"pasugo","vehicle":"moto","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"Folder","promo_code":"welcome50","payment":"gcash"}')).id;
-select pg_temp.check((select base_fee || '/' || discount || '/' || fee || '/' || rider_earning from orders where id = (select v::uuid from ctx where k = 'o2')) = '93/30/63/74',
-  'pasugo moto 4.2km: 40+42+11=93, 50% capped at 30, fee 63, rider gets 80% of 93 = 74');
+select pg_temp.check((select base_fee || '/' || discount || '/' || fee || '/' || rider_earning from orders where id = (select v::uuid from ctx where k = 'o2')) = '68/30/38/54',
+  'pasugo 4.2km: 20+(4.2-1)*15=68, 50% capped at 30, fee 38, rider gets 80% of 68 = 54');
 select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"x","promo_code":"WELCOME50"}')$$, 'already used');
 select pg_temp.expect_error($$select place_order('{"kind":"pasugo","pickup":{"name":"a","lat":14.5649,"lng":121.0368},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":4.2,"description":"x","promo_code":"NOPE"}')$$, 'not found');
 
@@ -154,10 +154,10 @@ select accept_order((select v::uuid from ctx where k = 'o2'));
 select advance_order((select v::uuid from ctx where k = 'o2'));
 select advance_order((select v::uuid from ctx where k = 'o2'));
 select advance_order((select v::uuid from ctx where k = 'o2'));
-select pg_temp.check(rider_balance(auth.uid()) = 25 - 74, 'balance 25 owed minus 74 owed to rider = -49');
+select pg_temp.check(rider_balance(auth.uid()) = 27 - 54, 'balance 27 owed minus 54 owed to rider = -27');
 select pg_temp.expect_error($$insert into rider_transactions (rider_id, type, amount) values (auth.uid(), 'payout', 1000)$$, 'row-level security');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
-insert into rider_transactions (rider_id, type, amount, note) values ('00000000-0000-0000-0000-00000000000a', 'payout', 49, 'GCash payout');
+insert into rider_transactions (rider_id, type, amount, note) values ('00000000-0000-0000-0000-00000000000a', 'payout', 27, 'GCash payout');
 select pg_temp.check(rider_balance('00000000-0000-0000-0000-00000000000a') = 0, 'settled after payout');
 select pg_temp.check((select count(*) from orders) = 4, 'admin sees all orders');
 select cancel_order((select v::uuid from ctx where k = 'o3'));
@@ -170,22 +170,22 @@ reset role;
 select pg_temp.check((select rider_share from settings) = 0.75, 'customer cannot change commission');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 insert into ctx select 'o4', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
-select pg_temp.check((select fee || '/' || rider_earning from orders where id = (select v::uuid from ctx where k = 'o4')) = '133/100', 'new prices: 59+54+20=133, 75% = 100');
-select pg_temp.check((select rider_earning from orders where id = (select v::uuid from ctx where k = 'o1')) = 98, 'old orders keep their original share');
+select pg_temp.check((select fee || '/' || rider_earning from orders where id = (select v::uuid from ctx where k = 'o4')) = '175/131', 'new prices: 59+96+20=175, 75% = 131');
+select pg_temp.check((select rider_earning from orders where id = (select v::uuid from ctx where k = 'o1')) = 109, 'old orders keep their original share');
 
 \echo '16. booking fee goes to the company; the beta waiver drops it and the commission'
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
 update settings set rider_share = 0.7, booking_fee = 15, beta_waiver = false;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
 insert into ctx select 'o5', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
-select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o5')) = '133/15/148/93/false',
-  'normal: fee 133 + booking 15 = 148 paid; rider gets 70% of 133 = 93');
+select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o5')) = '175/15/190/123/false',
+  'normal: fee 175 + booking 15 = 190 paid; rider gets 70% of 175 = 123');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
 update settings set beta_waiver = true;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
 insert into ctx select 'o6', (place_order('{"kind":"pabili","pickup":{"name":"a","lat":14.5503,"lng":121.0287},"dropoff":{"name":"b","lat":14.5866,"lng":121.0614},"km":7.4,"items":[{"name":"x","qty":1}]}')).id;
-select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_share || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o6')) = '133/0/133/1/133/true',
-  'beta: no booking fee, rider keeps 100% of 133');
+select pg_temp.check((select base_fee || '/' || booking_fee || '/' || fee || '/' || rider_share || '/' || rider_earning || '/' || commission_waived from orders where id = (select v::uuid from ctx where k = 'o6')) = '175/0/175/1/175/true',
+  'beta: no booking fee, rider keeps 100% of 175');
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 select accept_order((select v::uuid from ctx where k = 'o6'));
 select advance_order((select v::uuid from ctx where k = 'o6'));
@@ -198,8 +198,8 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000000c2');
 insert into ctx select 'o7', (place_order('{"kind":"pabili","dropoff":{"name":"Home","lat":14.5866,"lng":121.0614},"km":8,
   "stops":[{"name":"Crispy Coop","lat":14.5503,"lng":121.0287,"items":[{"id":"a","name":"6pc Bucket","qty":1}]},
            {"name":"BotikaPlus","lat":14.556,"lng":121.019,"items":[{"id":"b","name":"Paracetamol","qty":2}]}]}')).id;
-select pg_temp.check((select store_count || '/' || pickup_name || '/' || jsonb_array_length(items) || '/' || base_fee from orders where id = (select v::uuid from ctx where k = 'o7')) = '2/Crispy Coop/2/159',
-  '2 stores: pickup is the first store, both lists kept, fee 59 (base set in section 14) + (8-2)*10 + 2*20 = 159');
+select pg_temp.check((select store_count || '/' || pickup_name || '/' || jsonb_array_length(items) || '/' || base_fee from orders where id = (select v::uuid from ctx where k = 'o7')) = '2/Crispy Coop/2/204',
+  '2 stores: pickup is the first store, both lists kept, fee 59 (base set in section 14) + (8-1)*15 + 2*20 = 204');
 select pg_temp.expect_error($$select place_order('{"kind":"pabili","dropoff":{"name":"H","lat":14.58,"lng":121.06},"km":8,"stops":[{"name":"A","lat":14.55,"lng":121.02,"items":[]}]}')$$, 'at least one item for A');
 select pg_temp.expect_error($$select place_order(jsonb_build_object('kind','pabili','dropoff',jsonb_build_object('name','H','lat',14.58,'lng',121.06),'km',8,
   'stops',(select jsonb_agg(jsonb_build_object('name','S'||i,'lat',14.55,'lng',121.02,'items',jsonb_build_array(jsonb_build_object('id','x','name','x','qty',1)))) from generate_series(1,6) i)))$$, 'at most 5 stores');

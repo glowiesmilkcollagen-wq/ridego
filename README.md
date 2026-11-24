@@ -16,7 +16,7 @@ Three apps from one codebase (Expo / React Native), connected through one **Supa
 - **Pabili** — buy anything (food, medicine, groceries, hardware…) from a suggested store or *any* store — or from **up to 5 stores in one order**
   (e.g. chicken from one place and medicine from another), each with its own shopping list. The fee adds **₱20 per store**, including the first
   (Admin → Fees & commission). Write the shopping list;
-  a rider buys it with their own money and brings it. The customer repays the receipt amount plus the delivery fee — **the app only charges the delivery fee.**
+  a rider buys it with their own money and brings it. The customer repays the receipt amount plus the driver fee — **the app only charges the driver fee.**
 - **Pasugo** — a rider picks up a document, a bag or a package and brings it to you or anywhere (nothing to buy). Motorcycles only.
 - Promo codes, live tracking (the rider's position updates every few seconds, with how far they are), call/text the rider, cancel (before the rider starts), rate.
 - Pays in **cash** for now (GCash/card show as "coming soon").

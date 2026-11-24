@@ -93,12 +93,12 @@ Searches are cached per ~1 km area for a day. Check usage in Google Cloud → Bi
   > Pabili brings it to you — from any store, anywhere in town.
   >
   > PABILI — We buy it for you
-  > Need food, medicine, groceries or hardware? Pick a store or type any store (even a small sari-sari store), write your list, and a Pabili rider buys it with their own money and brings it to your door. You pay the rider the exact receipt amount plus the delivery fee. Up to 5 stores in one order.
+  > Need food, medicine, groceries or hardware? Pick a store or type any store (even a small sari-sari store), write your list, and a Pabili rider buys it with their own money and brings it to your door. You pay the rider the exact receipt amount plus the driver fee. Up to 5 stores in one order.
   >
   > PASUGO — We pick it up for you
   > Documents, a bag, a package: a rider picks it up and brings it to you or anyone you choose.
   >
-  > • See the delivery fee before you book — no surprises
+  > • See the driver fee before you book — no surprises
   > • Follow your rider live on the map
   > • Call or text your rider
   > • Cancel free until the rider reaches the store or pickup
@@ -124,7 +124,7 @@ Searches are cached per ~1 km area for a day. Check usage in Google Cloud → Bi
   > Apply: ridegopabiliapp@gmail.com
 
 ### Review notes (App Store "Notes" / Play "App access")
-> Pabili is a delivery and errand service in Metro Manila, Philippines. Riders are independent motorcyclists who buy items for customers with their own money; customers repay the receipt plus the delivery fee in cash. The app only charges the delivery fee; no payments are made in the app.
+> Pabili is a delivery and errand service in Metro Manila, Philippines. Riders are independent motorcyclists who buy items for customers with their own money; customers repay the receipt plus the driver fee in cash. The app only charges the driver fee; no payments are made in the app.
 > Demo customer: (email) / (password). Set "Saved address" to a place in Makati to see local stores.
 > Demo rider (already approved): (email) / (password). The rider app is used together with the customer app: place an order in Pabili, then accept it in Pabili Rider.
 > Account deletion: Account → Delete account (customer), Profile → Delete account (rider).

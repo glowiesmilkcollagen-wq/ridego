@@ -65,9 +65,9 @@ create table if not exists public.settings (
   rider_share numeric not null default 0.7 check (rider_share between 0 and 1),
   booking_fee numeric not null default 15 check (booking_fee >= 0),  -- added to every order; goes to the company
   beta_waiver boolean not null default true,                           -- beta: no booking fee and no commission (riders keep 100%)
-  pabili_base numeric not null default 49,
-  pabili_base_km numeric not null default 2,
-  pabili_per_km numeric not null default 10,
+  pabili_base numeric not null default 20,      -- driver fee minimum, covers the first pabili_base_km (pabili and pasugo)
+  pabili_base_km numeric not null default 1,
+  pabili_per_km numeric not null default 15,    -- per km after that, charged for the exact fraction (1.5 km = base + half)
   pabili_per_store numeric not null default 20,   -- added for each store the rider buys from
   moto_base numeric not null default 40,
   moto_per_km numeric not null default 10,
@@ -219,7 +219,8 @@ begin
   if p_vehicle = 'car' then
     return round(greatest(s.car_min, s.car_base + s.car_per_km * p_km + s.car_per_min * eta));
   end if;
-  return round(greatest(s.moto_min, s.moto_base + s.moto_per_km * p_km + s.moto_per_min * eta));
+  -- Pasugo: the same driver fee as pabili, without the per-store part. (moto_* settings are no longer used.)
+  return round(s.pabili_base + greatest(0, p_km - s.pabili_base_km) * s.pabili_per_km);
 end $$;
 
 -- Discount for a promo code, or an error explaining why it can't be used.

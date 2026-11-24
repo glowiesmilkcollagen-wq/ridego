@@ -26,11 +26,11 @@ export const DEFAULT_PRICES: Prices = {
   rider_share: 0.7,
   booking_fee: 15,
   beta_waiver: true,
-  pabili_base: 49, pabili_base_km: 2, pabili_per_km: 10, pabili_per_store: 20,
+  pabili_base: 20, pabili_base_km: 1, pabili_per_km: 15, pabili_per_store: 20,
   moto_base: 40, moto_per_km: 10, moto_per_min: 1, moto_min: 50,
 };
 
-/** Average motorcycle speed in the city (km/h), used for ETA estimates and the per-minute part of the pasugo fee. */
+/** Average motorcycle speed in the city (km/h), used for ETA estimates. */
 const SPEED = 24;
 
 export function etaMinutes(km: number) {
@@ -38,21 +38,22 @@ export function etaMinutes(km: number) {
 }
 
 /**
- * Pabili delivery fee. The items themselves are paid by the rider at the store and repaid by the customer
+ * Pabili driver fee. The items themselves are paid by the rider at the store and repaid by the customer
  * based on the receipt. The server recomputes this when the order is placed (public.compute_fee).
  */
 export function deliveryFee(km: number, p: Prices = DEFAULT_PRICES, stores = 1) {
   return Math.round(distanceFee(km, p) + storesFee(stores, p));
 }
-/** The distance part of the pabili fee. */
+/**
+ * The distance part of the driver fee: the minimum (₱20) covers the first km, then each km after that is charged
+ * for the exact distance — 1.5 km is ₱20 + half of ₱15. Rounded to the whole peso.
+ */
 export const distanceFee = (km: number, p: Prices = DEFAULT_PRICES) => Math.round(p.pabili_base + Math.max(0, km - p.pabili_base_km) * p.pabili_per_km);
 /** The per-store part of the pabili fee (₱20 per store by default, including the first). */
 export const storesFee = (stores: number, p: Prices = DEFAULT_PRICES) => Math.max(1, stores) * p.pabili_per_store;
 
-/** Pasugo fee (motorcycle); mirrors public.compute_fee on the server. */
-export function pasugoFee(km: number, p: Prices = DEFAULT_PRICES) {
-  return Math.round(Math.max(p.moto_min, p.moto_base + p.moto_per_km * km + p.moto_per_min * etaMinutes(km)));
-}
+/** Pasugo driver fee: the same as pabili's distance fee, without the per-store part. Mirrors public.compute_fee. */
+export const pasugoFee = (km: number, p: Prices = DEFAULT_PRICES) => distanceFee(km, p);
 
 export const percent = (share: number) => `${Math.round(share * 100)}%`;
 

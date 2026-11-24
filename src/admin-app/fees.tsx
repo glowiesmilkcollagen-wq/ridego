@@ -77,29 +77,24 @@ export default function Fees() {
           {f('booking_fee', 'Booking fee (₱)', 'Added to every order; goes to Pabili.')}
         </View>
       </Panel>
-      <Panel title="Pabili driver fee">
+      <Panel title="Driver fee (pabili and pasugo)">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {f('pabili_base', 'Base fee (₱)')}
-          {f('pabili_base_km', 'Km included in base')}
-          {f('pabili_per_km', 'Per extra km (₱)')}
-          {f('pabili_per_store', 'Per store (₱)', 'Charged for each store, including the first.')}
-        </View>
-      </Panel>
-      <Panel title="Pasugo (motorcycle)">
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {f('moto_base', 'Base (₱)')}{f('moto_per_km', 'Per km (₱)')}{f('moto_per_min', 'Per minute (₱)', 'Estimated at 24 km/h')}{f('moto_min', 'Minimum (₱)')}
+          {f('pabili_base', 'Minimum fee (₱)')}
+          {f('pabili_base_km', 'Km covered by the minimum')}
+          {f('pabili_per_km', 'Per km after that (₱)', 'Charged for the exact distance: half a km = half the rate.')}
+          {f('pabili_per_store', 'Per store, pabili only (₱)', 'Charged for each store, including the first.')}
         </View>
       </Panel>
       <Panel title={`Preview — pasugo, ${form.beta_waiver ? 'beta waiver ON' : 'beta waiver OFF'}`}>
         <Table
           head={['Distance', 'Fee', 'Booking fee', 'Customer pays', 'Rider gets', 'Pabili keeps']}
-          rows={[2, 5, 8, 12].map((km) => {
+          rows={[0.5, 1.5, 3, 5, 8].map((km) => {
             const fee = pasugoFee(km, p);
             const rider = Math.round(fee * share);
             return [`${km} km`, peso(fee), peso(booking), peso(fee + booking), peso(rider), peso(fee + booking - rider)];
           })}
         />
-        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances, 1 store: {[2, 5, 8, 12].map((km) => peso(deliveryFee(km, p))).join(' · ')}; each extra store adds {peso(p.pabili_per_store)} (before booking fee). Promo discounts come out of Pabili’s part.</Text>
+        <Text style={{ color: colors.muted, marginTop: 8, fontSize: 12 }}>Pabili at the same distances, 1 store: {[0.5, 1.5, 3, 5, 8].map((km) => peso(deliveryFee(km, p))).join(' · ')}; each extra store adds {peso(p.pabili_per_store)} (before booking fee). Promo discounts come out of Pabili’s part.</Text>
       </Panel>
       <View style={{ height: 1, borderRadius: radius.sm }} />
     </Page>
