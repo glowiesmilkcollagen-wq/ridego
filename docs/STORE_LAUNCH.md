@@ -77,7 +77,7 @@ Apple review usually takes 1–3 days; Google's first review can take up to abou
 ---
 
 ## Nearby stores (Google Places)
-The Pabili tab lists real stores within 3 km of the delivery address from Google Maps (plus Pabili's own store list).
+The Pabili tab lists real stores within 6 km of the delivery address from Google Maps (plus Pabili's own store list).
 Google Cloud → APIs & Services → Credentials → **RideGo Server** key → API restrictions: tick **Routes API** and **Places API (New)**.
 Searches are cached per ~1 km area for a day. Check usage in Google Cloud → Billing → Reports.
 

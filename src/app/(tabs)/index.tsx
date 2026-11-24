@@ -22,7 +22,7 @@ export default function Home() {
   const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const active = (orders.data ?? []).filter(isOpen);
   const first = (profile?.full_name || 'there').split(' ')[0];
-  // Featured: the nearest branch of each big chain (Jollibee, SM, Mercury Drug, CitiHardware…) within 3 km.
+  // Featured: the nearest branch of each big chain (Jollibee, SM, Mercury Drug, CitiHardware…) within 6 km.
   const topPerCategory = featuredStores(stores);
 
   return (

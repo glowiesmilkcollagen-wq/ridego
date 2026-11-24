@@ -14,7 +14,7 @@ import { colors, radius } from '@/lib/theme';
 
 export default function Pabili() {
   const { state } = useStore();
-  // Real stores within 3 km of the delivery address (Pabili's own + Google Maps), nearest first.
+  // Real stores within 6 km of the delivery address (Pabili's own + Google Maps), nearest first.
   const { stores, loading } = useNearbyStores(state.home.location);
   const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const [q, setQ] = useState('');

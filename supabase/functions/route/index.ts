@@ -173,7 +173,7 @@ const SEARCHES: { types: string[]; rank: 'DISTANCE' | 'POPULARITY' }[] = [
   { types: ['hardware_store', 'home_improvement_store'], rank: 'POPULARITY' },
 ];
 const PLACES_CACHE_HOURS = 24;
-const PLACES_RADIUS_M = 3800; // searched around a ~1 km grid cell; the app keeps only stores within 3 km of the customer
+const PLACES_RADIUS_M = 6800; // searched around a ~1 km grid cell; the app keeps only stores within 6 km of the customer
 
 type Place = { id: string; name: string; address: string; lat: number; lng: number; type: string };
 
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
       if (!GOOGLE_KEY) return json({ places: [], source: 'none' });
       // One search per ~1 km grid cell per day, shared by everyone in that area.
       const cell: P = [Math.round(at[0] / 0.01) * 0.01, Math.round(at[1] / 0.01) * 0.01];
-      const key = `pl4:${cell[0].toFixed(2)},${cell[1].toFixed(2)}`;
+      const key = `pl5:${cell[0].toFixed(2)},${cell[1].toFixed(2)}`;
       const since = new Date(Date.now() - PLACES_CACHE_HOURS * 3600e3).toISOString();
       const { data: hit } = await db.from('route_cache').select('path').eq('key', key).gte('created_at', since).maybeSingle();
       if (hit?.path) return json({ places: hit.path, source: 'google', cached: true });

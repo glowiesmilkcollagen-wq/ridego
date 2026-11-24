@@ -5,7 +5,7 @@ import { distanceKm, LatLng } from './geo';
 import { supabase, supabaseConfigured } from './supabase';
 
 /** Stores shown to the customer are the ones within this distance (straight line) of the delivery address. */
-export const NEARBY_KM = 3;
+export const NEARBY_KM = 6;
 
 type Place = { id: string; name: string; address: string; lat: number; lng: number; type: string };
 
@@ -112,7 +112,7 @@ function fetchPlaces(at: LatLng): Promise<Place[]> {
 }
 
 /**
- * Stores within 3 km of `at`: Pabili's own stores plus real stores from Google Maps, nearest first.
+ * Stores within NEARBY_KM (6 km) of `at`: Pabili's own stores plus real stores from Google Maps, nearest first.
  * `far` is how many of Pabili's own stores were left out for being farther away.
  */
 export function useNearbyStores(at: LatLng) {
