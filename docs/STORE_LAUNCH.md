@@ -107,7 +107,7 @@ Searches are cached per ~1 km area for a day. Check usage in Google Cloud → Bi
   > Questions? ridegopabiliapp@gmail.com
 
 ### Pabili Rider
-- **Name**: Pabili Rider
+- **Name (store listing)**: RideGoPH: Rider — same on the App Store and Google Play (the name under the icon on the phone stays "Pabili Rider")
 - **Subtitle**: Earn with pabili & pasugo
 - **Short description**: Take pabili and pasugo jobs near you, navigate, and track your earnings.
 - **Category**: Business (iOS) / Maps & Navigation or Business (Play)
