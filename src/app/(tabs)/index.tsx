@@ -9,9 +9,8 @@ import { showBecomeRider } from '@/components/becomeRider';
 import { SectionTitle } from '@/components/ui';
 import { isOpen, useMyOrders } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { CATEGORIES } from '@/lib/data';
-import { distanceKm, roadKm } from '@/lib/geo';
-import { NEARBY_KM, useNearbyStores } from '@/lib/nearby';
+import { roadKm } from '@/lib/geo';
+import { featuredStores, NEARBY_KM, useNearbyStores } from '@/lib/nearby';
 import { useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
@@ -23,12 +22,8 @@ export default function Home() {
   const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const active = (orders.data ?? []).filter(isOpen);
   const first = (profile?.full_name || 'there').split(' ')[0];
-  // The nearest store of each kind, so Home shows that pabili is not only for food.
-  const topPerCategory = CATEGORIES.flatMap((c) => {
-    const best = stores.filter((s) => s.category === c.key)
-      .sort((a, b) => distanceKm(a.location, state.home.location) - distanceKm(b.location, state.home.location))[0];
-    return best ? [best] : [];
-  });
+  // Featured: the nearest branch of each big chain (Jollibee, SM, Mercury Drug, CitiHardware…) within 3 km.
+  const topPerCategory = featuredStores(stores);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -73,14 +68,14 @@ export default function Home() {
           </View>
         )}
 
-        <SectionTitle style={{ marginTop: 20 }}>Pabili from places near you</SectionTitle>
+        <SectionTitle style={{ marginTop: 20 }}>Featured stores near you</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
           {topPerCategory.map((r) => (
             <StoreCard key={r.id} r={r} km={kmFor(r)} compact />
           ))}
         </ScrollView>
         {!storesLoading && !topPerCategory.length && (
-          <Text style={{ color: colors.muted }}>No stores found within {NEARBY_KM} km. In Pabili, tap “Buy from any store” and type the store’s name.</Text>
+          <Text style={{ color: colors.muted }}>No featured stores within {NEARBY_KM} km. See all nearby stores in Pabili, or tap “Buy from any store” there and type the store’s name.</Text>
         )}
       </ScrollView>
     </SafeAreaView>

@@ -8,7 +8,7 @@ import TypeStoreRow from '@/components/TypeStoreRow';
 import { Chip, Empty } from '@/components/ui';
 import { CATEGORIES, Category } from '@/lib/data';
 import { roadKm } from '@/lib/geo';
-import { NEARBY_KM, useNearbyStores } from '@/lib/nearby';
+import { isFeatured, NEARBY_KM, useNearbyStores } from '@/lib/nearby';
 import { errandCount, useStore } from '@/lib/store';
 import { colors, radius } from '@/lib/theme';
 
@@ -19,14 +19,15 @@ export default function Pabili() {
   const kmFor = (s: { location: typeof state.home.location }) => roadKm(s.location, state.home.location);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Category | null>(null);
+  const [featured, setFeatured] = useState(false);
   const count = errandCount(state.errand);
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return stores.filter((r) => (!cat || r.category === cat) && (!s ||
+    return stores.filter((r) => (!cat || r.category === cat) && (!featured || isFeatured(r)) && (!s ||
       `${r.name} ${r.tagline}`.toLowerCase().includes(s) ||
       r.favorites.some((f) => f.toLowerCase().includes(s))));
-  }, [q, cat, stores]);
+  }, [q, cat, featured, stores]);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -60,7 +61,8 @@ export default function Pabili() {
               <TextInput value={q} onChangeText={setQ} placeholder="Search stores or items" placeholderTextColor={colors.muted} style={styles.input} />
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 14, marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
-              <Chip label="All" active={!cat} onPress={() => setCat(null)} />
+              <Chip label="All" active={!cat && !featured} onPress={() => { setCat(null); setFeatured(false); }} />
+              <Chip label="Featured" icon="⭐" active={featured} onPress={() => setFeatured((v) => !v)} />
               {CATEGORIES.map((c) => (
                 <Chip key={c.key} label={c.key} icon={c.emoji} active={cat === c.key} onPress={() => setCat(cat === c.key ? null : c.key)} />
               ))}
@@ -72,7 +74,9 @@ export default function Pabili() {
         ListEmptyComponent={
           loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} /> : q.trim() || cat
             ? <Empty icon="store-search-outline" title="No matches" subtitle="Try another search, or ask the rider to buy from the store you typed (above)" />
-            : <Empty icon="store-search-outline" title={`No stores found within ${NEARBY_KM} km`} subtitle="Tap “Buy from any store” above and type the store’s name — the rider can buy from any shop." />
+            : featured
+              ? <Empty icon="star-outline" title={`No featured stores within ${NEARBY_KM} km`} subtitle="Jollibee, SM, Gaisano, Mercury Drug, CitiHardware and other big stores appear here when one is near your address." />
+              : <Empty icon="store-search-outline" title={`No stores found within ${NEARBY_KM} km`} subtitle="Tap “Buy from any store” above and type the store’s name — the rider can buy from any shop." />
         }
       />
       {state.errand.stops.length > 0 && (

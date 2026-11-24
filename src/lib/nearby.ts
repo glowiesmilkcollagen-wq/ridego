@@ -18,6 +18,7 @@ const TYPE_CATEGORY: Record<string, Category> = {
   hardware_store: 'Hardware', home_improvement_store: 'Hardware',
   florist: 'Gifts', gift_shop: 'Gifts',
   pet_store: 'Pets',
+  department_store: 'Groceries', shopping_mall: 'Groceries',
 };
 const TYPE_EMOJI: Record<string, string> = { cafe: '☕', coffee_shop: '☕', bakery: '🥐', fast_food_restaurant: '🍔', florist: '💐' };
 const TINT: Record<Category, string> = {
@@ -28,7 +29,33 @@ const LABEL: Record<string, string> = {
   pharmacy: 'Pharmacy', drugstore: 'Drugstore', grocery_store: 'Grocery', supermarket: 'Supermarket', market: 'Market',
   convenience_store: 'Convenience store', hardware_store: 'Hardware', home_improvement_store: 'Home & hardware',
   florist: 'Flowers', gift_shop: 'Gifts', pet_store: 'Pet shop',
+  department_store: 'Department store', shopping_mall: 'Mall',
 };
+
+/**
+ * Featured brands: big, well-known chains shown in "Featured stores" (Home) and the ⭐ Featured filter.
+ * `key` groups the branches of one brand so only the nearest branch is featured.
+ */
+const FEATURED: { key: string; match: RegExp; emoji: string; category: Category }[] = [
+  { key: 'jollibee', match: /jollibee/i, emoji: '🐝', category: 'Food' },
+  { key: 'mcdonalds', match: /mc ?donald|mcdo\b/i, emoji: '🍟', category: 'Food' },
+  { key: 'kfc', match: /\bkfc\b|kentucky fried/i, emoji: '🍗', category: 'Food' },
+  { key: '7eleven', match: /7[- ]?eleven|7[- ]?11\b/i, emoji: '🏪', category: 'Convenience' },
+  { key: 'rose', match: /rose pharmacy/i, emoji: '🌹', category: 'Medicine' },
+  { key: 'mercury', match: /mercury drug/i, emoji: '💊', category: 'Medicine' },
+  { key: '360', match: /three sixty|360 pharmacy/i, emoji: '💊', category: 'Medicine' },
+  { key: 'chb', match: /cebu home (builders|& builders|and builders)|\bchb\b/i, emoji: '🔧', category: 'Hardware' },
+  { key: 'citi', match: /citi ?hardware/i, emoji: '🔧', category: 'Hardware' },
+  { key: 'depot', match: /home ?depot|wilcon/i, emoji: '🔧', category: 'Hardware' },
+  // Malls last: a shop inside one ("Rose Pharmacy Gaisano Grand") counts as the shop's brand.
+  { key: 'savemore', match: /savemore|save more/i, emoji: '🛒', category: 'Groceries' },
+  { key: 'sm', match: /^sm\b|\bsm (city|supermarket|hypermarket|store|department|seaside|mall)/i, emoji: '🛍️', category: 'Groceries' },
+  { key: 'ayala', match: /ayala (mall|center|centre)/i, emoji: '🛍️', category: 'Groceries' },
+  { key: 'gaisano', match: /gaisano/i, emoji: '🛍️', category: 'Groceries' },
+];
+const brandOf = (name: string) => FEATURED.find((b) => b.match.test(name));
+/** Whether a store belongs to one of the featured brands. */
+export const isFeatured = (s: Store) => !!brandOf(s.name);
 
 /** A store from Google Maps, shaped like Pabili's own stores. It is ordered like a "store not on the list". */
 /** Google has hundreds of specific types (noodle_shop, asian_restaurant…): sort them by keywords. */
@@ -45,13 +72,14 @@ function categoryOf(type: string): Category {
 const humanize = (type: string) => (type ? type.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Store');
 
 function toStore(p: Place): Store {
-  const category = categoryOf(p.type);
+  const brand = brandOf(p.name);
+  const category = brand?.category ?? categoryOf(p.type);
   return {
     id: `g:${p.id}`,
     name: p.name,
     tagline: LABEL[p.type] ?? humanize(p.type),
     category,
-    emoji: TYPE_EMOJI[p.type] ?? CATEGORIES.find((c) => c.key === category)?.emoji ?? '🏪',
+    emoji: brand?.emoji ?? TYPE_EMOJI[p.type] ?? CATEGORIES.find((c) => c.key === category)?.emoji ?? '🏪',
     tint: TINT[category],
     rating: 0,
     waitMinutes: category === 'Food' ? 15 : 8,
@@ -121,3 +149,14 @@ export const storeStop = (r: Store) =>
 
 /** Landmarks (malls, parks…) from Pabili's list that are within `km` of `at`; far-away ones would only confuse. */
 export const landmarksNear = (at: LatLng, km = 15) => PLACES.filter((p) => distanceKm(p.location, at) <= km);
+
+/** The nearest branch of each featured brand among `stores` (already sorted nearest first). */
+export function featuredStores(stores: Store[]): Store[] {
+  const seen = new Set<string>();
+  return stores.filter((s) => {
+    const b = brandOf(s.name);
+    if (!b || seen.has(b.key)) return false;
+    seen.add(b.key);
+    return true;
+  });
+}

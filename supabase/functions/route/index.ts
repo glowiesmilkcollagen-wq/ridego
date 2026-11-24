@@ -159,10 +159,18 @@ async function osrmMatrix(origins: P[], dest: P) {
 }
 
 // ---------- nearby stores (Google Places API, New) ----------
-// Pabili categories → Google place types. Two searches (food, and shops) so restaurants don't crowd out pharmacies.
-const PLACE_GROUPS: string[][] = [
-  ['restaurant', 'fast_food_restaurant', 'cafe', 'coffee_shop', 'bakery', 'meal_takeaway'],
-  ['pharmacy', 'drugstore', 'convenience_store', 'grocery_store', 'supermarket', 'market', 'hardware_store', 'home_improvement_store', 'florist', 'gift_shop', 'pet_store'],
+// Pabili categories → Google place types. Food and shops are searched separately (nearest and most popular) so
+// restaurants don't crowd out pharmacies; four more "most popular" searches make sure the big chains the app
+// features (Jollibee, SM, Gaisano, Mercury Drug, CitiHardware…) are found too.
+const FOOD = ['restaurant', 'fast_food_restaurant', 'cafe', 'coffee_shop', 'bakery', 'meal_takeaway'];
+const SHOPS = ['pharmacy', 'drugstore', 'convenience_store', 'grocery_store', 'supermarket', 'market', 'hardware_store', 'home_improvement_store', 'florist', 'gift_shop', 'pet_store'];
+const SEARCHES: { types: string[]; rank: 'DISTANCE' | 'POPULARITY' }[] = [
+  { types: FOOD, rank: 'DISTANCE' }, { types: FOOD, rank: 'POPULARITY' },
+  { types: SHOPS, rank: 'DISTANCE' }, { types: SHOPS, rank: 'POPULARITY' },
+  { types: ['fast_food_restaurant'], rank: 'POPULARITY' },
+  { types: ['department_store', 'shopping_mall', 'supermarket', 'convenience_store'], rank: 'POPULARITY' },
+  { types: ['pharmacy', 'drugstore'], rank: 'POPULARITY' },
+  { types: ['hardware_store', 'home_improvement_store'], rank: 'POPULARITY' },
 ];
 const PLACES_CACHE_HOURS = 24;
 const PLACES_RADIUS_M = 3800; // searched around a ~1 km grid cell; the app keeps only stores within 3 km of the customer
@@ -171,20 +179,23 @@ type Place = { id: string; name: string; address: string; lat: number; lng: numb
 
 async function googlePlaces(center: P): Promise<Place[]> {
   const out = new Map<string, Place>();
-  // For each group: the 20 nearest (small shops next door) and the 20 most popular (well-known stores further out).
-  for (const includedTypes of PLACE_GROUPS) for (const rankPreference of ['DISTANCE', 'POPULARITY']) {
-    const body = await fetchJson('https://places.googleapis.com/v1/places:searchNearby', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': GOOGLE_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.shortFormattedAddress,places.location,places.primaryType',
-      },
-      body: JSON.stringify({
-        includedTypes, maxResultCount: 20, rankPreference, languageCode: 'en', regionCode: 'PH',
-        locationRestriction: { circle: { center: { latitude: center[0], longitude: center[1] }, radius: PLACES_RADIUS_M } },
-      }),
-    });
+  // Run in parallel; one failing search (e.g. a type Google doesn't know) doesn't lose the others.
+  const results = await Promise.allSettled(SEARCHES.map(({ types: includedTypes, rank: rankPreference }) => fetchJson('https://places.googleapis.com/v1/places:searchNearby', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': GOOGLE_KEY,
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.shortFormattedAddress,places.location,places.primaryType',
+    },
+    body: JSON.stringify({
+      includedTypes, maxResultCount: 20, rankPreference, languageCode: 'en', regionCode: 'PH',
+      locationRestriction: { circle: { center: { latitude: center[0], longitude: center[1] }, radius: PLACES_RADIUS_M } },
+    }),
+  })));
+  if (results.every((r) => r.status === 'rejected')) throw (results[0] as PromiseRejectedResult).reason;
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue;
+    const body = r.value;
     for (const p of body?.places ?? []) {
       if (!p?.id || !p.location) continue;
       out.set(p.id, {
@@ -238,7 +249,7 @@ Deno.serve(async (req) => {
       if (!GOOGLE_KEY) return json({ places: [], source: 'none' });
       // One search per ~1 km grid cell per day, shared by everyone in that area.
       const cell: P = [Math.round(at[0] / 0.01) * 0.01, Math.round(at[1] / 0.01) * 0.01];
-      const key = `pl3:${cell[0].toFixed(2)},${cell[1].toFixed(2)}`;
+      const key = `pl4:${cell[0].toFixed(2)},${cell[1].toFixed(2)}`;
       const since = new Date(Date.now() - PLACES_CACHE_HOURS * 3600e3).toISOString();
       const { data: hit } = await db.from('route_cache').select('path').eq('key', key).gte('created_at', since).maybeSingle();
       if (hit?.path) return json({ places: hit.path, source: 'google', cached: true });
