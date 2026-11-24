@@ -77,7 +77,7 @@ export default function Fees() {
           {f('booking_fee', 'Booking fee (₱)', 'Added to every order; goes to Pabili.')}
         </View>
       </Panel>
-      <Panel title="Pabili delivery fee">
+      <Panel title="Pabili driver fee">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {f('pabili_base', 'Base fee (₱)')}
           {f('pabili_base_km', 'Km included in base')}

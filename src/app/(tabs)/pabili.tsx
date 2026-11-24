@@ -41,7 +41,7 @@ export default function Pabili() {
             <View style={styles.how}>
               <Text style={styles.howText}>
                 Food, medicine, groceries or anything else: tell us what you need. A rider goes to the store, buys it, and brings it to you.
-                You pay the rider back for the items (as on the receipt) plus the delivery fee.
+                You pay the rider back for the items (as on the receipt) plus the driver fee.
               </Text>
             </View>
 

@@ -65,7 +65,7 @@ export default function StorePicker() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Text style={styles.hint}>Each store adds {peso(prices.pabili_per_store)} to the delivery fee. The rider visits the stores in the order you add them.</Text>
+      <Text style={styles.hint}>Each store adds {peso(prices.pabili_per_store)} to the driver fee. The rider visits the stores in the order you add them.</Text>
       <View style={styles.search}>
         <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
         <TextInput autoFocus value={q} onChangeText={setQ} placeholder="Search stores, pharmacies, items…" placeholderTextColor={colors.muted} style={styles.input} />

@@ -122,21 +122,21 @@ export default function Order() {
         </Card>
 
         <Card>
-          <SectionTitle>Pay the delivery fee with</SectionTitle>
+          <SectionTitle>Pay the driver fee with</SectionTitle>
           <PaymentPicker />
         </Card>
 
         <Card>
           {route ? (
             <>
-              <Row label={`Delivery (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(distanceFee(km, prices))} />
+              <Row label={`Driver fee (${km.toFixed(1)} km${route.estimated ? ', estimated' : ' by road'})`} value={peso(distanceFee(km, prices))} />
               <Row label={`${n} store${n > 1 ? 's' : ''} × ${peso(prices.pabili_per_store)}`} value={peso(storesFee(n, prices))} />
               {promo ? <Row label={`Promo ${promo.code}`} value={`−${peso(promo.discount)}`} valueColor={colors.ride} /> : null}
               <BookingFeeRow prices={prices} />
-              <Row label="You pay for delivery" value={peso(fee)} bold />
+              <Row label="You pay the driver" value={peso(fee)} bold />
             </>
           ) : (
-            <Row label="Delivery fee" value="Calculating route…" bold />
+            <Row label="Driver fee" value="Calculating route…" bold />
           )}
           {route && <View style={{ marginVertical: 8 }}><PromoField kind="pabili" baseFee={baseFee} value={promo} onChange={setPromo} /></View>}
           {route?.estimated && <Text style={styles.warn}>Couldn't reach the map service, so this distance is estimated.</Text>}

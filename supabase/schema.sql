@@ -756,7 +756,7 @@ begin
       when 'at_pickup' then private.push_to(new.customer_id, 'customer', format('%s is at %s', rider_name, new.pickup_name),
         case when new.kind = 'pabili' then 'Buying your items now. Keep your phone handy.' else 'Collecting the item now.' end, d)
       when 'picked_up' then private.push_to(new.customer_id, 'customer', 'On the way to you',
-        case when new.kind = 'pabili' then 'Prepare the cash for the items (receipt) and the delivery fee.' else 'Heading to the drop-off point.' end, d)
+        case when new.kind = 'pabili' then 'Prepare the cash for the items (receipt) and the driver fee.' else 'Heading to the drop-off point.' end, d)
       when 'delivered' then private.push_to(new.customer_id, 'customer', 'Delivered ✅', 'Thanks for using Pabili! Tap to rate your rider.', d)
       when 'searching' then private.push_to(new.customer_id, 'customer', 'Finding another rider', 'Your rider couldn''t take this order. We''re matching you with another rider.', d)
       else '[]'::jsonb

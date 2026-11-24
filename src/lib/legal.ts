@@ -81,7 +81,7 @@ export const LEGAL: Record<LegalDoc, Section[]> = {
     {
       heading: 'Paying',
       body: [
-        'The app shows the delivery fee before you order. For pabili you also repay the rider the exact amount on the store receipt. Payment is in cash to the rider for now.',
+        'The app shows the driver fee before you order. For pabili you also repay the rider the exact amount on the store receipt. Payment is in cash to the rider for now.',
         'Prices for items are set by the stores, not by Pabili. Ask the rider for the receipt.',
       ],
     },

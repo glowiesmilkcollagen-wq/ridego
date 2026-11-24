@@ -105,7 +105,7 @@ export default function CustomStore() {
         <View>
           <Text style={styles.h2}>Pin the store on the map</Text>
           <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 10, lineHeight: 19 }}>
-            Drag the map (or tap a spot) until the pin is on the store. This sets the route and the delivery fee.
+            Drag the map (or tap a spot) until the pin is on the store. This sets the route and the driver fee.
           </Text>
           <PinMap start={state.home.location} handle={map} onTouchingChange={setOnMap} onChange={(p) => { setPin(p); setMoved(true); }} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>

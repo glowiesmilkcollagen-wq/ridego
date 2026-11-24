@@ -30,7 +30,7 @@ export default function StoreCard({ r, km, compact }: { r: Store; km: number; co
           )}
         </View>
         <Text style={styles.meta} numberOfLines={1}>{[r.tagline, r.address].filter(Boolean).join(' · ')}</Text>
-        <Text style={styles.meta}>~{eta} min · {peso(deliveryFee(km))} delivery</Text>
+        <Text style={styles.meta}>~{eta} min · {peso(deliveryFee(km))} driver fee</Text>
       </View>
     </Pressable>
   );

@@ -72,7 +72,7 @@ export default function Account() {
         <Card>
           <SectionTitle>About</SectionTitle>
           <Text style={{ color: colors.muted, lineHeight: 20 }}>
-            Pabili orders (we buy food, medicine, groceries or anything) and Pasugo orders (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the delivery fee. Orders are matched with real Pabili riders near you.
+            Pabili orders (we buy food, medicine, groceries or anything) and Pasugo orders (we pick up & deliver anything). For pabili the rider buys at any store and the app only charges the driver fee. Orders are matched with real Pabili riders near you.
           </Text>
         </Card>
 

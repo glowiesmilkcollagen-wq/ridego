@@ -34,10 +34,10 @@ export function statusText(o: Pick<Order, 'kind' | 'status' | 'cargo' | 'cancell
       ? { label: 'Rider is buying your order', detail: 'Ordering at the counter — keep your phone handy' }
       : { label: 'Rider at the pickup', detail: 'Collecting the item' };
     case 'picked_up': return pabili
-      ? { label: 'On the way to you', detail: 'Prepare the payment for the items and delivery fee' }
+      ? { label: 'On the way to you', detail: 'Prepare the payment for the items and the driver fee' }
       : { label: 'Picked up — on the way', detail: 'Heading to the drop-off point' };
     case 'delivered': return pabili
-      ? { label: 'Delivered', detail: 'Paid the rider for the items and the delivery fee' }
+      ? { label: 'Delivered', detail: 'Paid the rider for the items and the driver fee' }
       : { label: 'Delivered', detail: 'Handed over at the drop-off point' };
     case 'cancelled': return { label: 'Cancelled', detail: o.cancelled_by === 'admin' ? 'Cancelled by Pabili support. No charge was made.' : 'No charge was made.' };
   }
