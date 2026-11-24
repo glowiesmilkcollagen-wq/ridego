@@ -40,3 +40,5 @@ yarn-error.*
 /ios
 /android
 dist-admin/
+*.keystore
+credentials.json
