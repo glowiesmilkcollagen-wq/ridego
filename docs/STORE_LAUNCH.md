@@ -65,6 +65,13 @@ APP_VARIANT=rider npx eas-cli@latest build -p android --profile rider-production
 - Android production builds are `.aab` files. The **first upload of each app must be done by hand** in Play Console
   (Create app → Testing → Closed testing → Create release → upload the `.aab` from the EAS build page).
 
+### Android signing and Google Maps (done)
+- Both apps upload with the **same upload key** (SHA-1 `67:0F…A9:F5`). On EAS the rider app's default build credentials are named
+  `play-upload`. Never delete them: Google Play rejects uploads signed with any other key.
+- Google re-signs apps it delivers. The **RideGo Android** Maps key in Google Cloud allows these package + SHA-1 pairs:
+  customer `5C:1B…` (Play) and `67:0F…` (EAS); rider `8B:AF…` (Play), `67:0F…` (EAS) and `20:6A…` (old rider builds).
+  Play signing SHA-1s are in Play Console → Protected with Play → Play Store protection → Manage Play app signing (Classical key).
+
 ### 6. Google Play closed test (14 days)
 Play Console → each app → **Testing → Closed testing** → add a list of at least 12 testers' Gmail addresses → send them the opt-in link.
 They install from Google Play and should open the app now and then. After 14 days, apply for production access (Dashboard).
