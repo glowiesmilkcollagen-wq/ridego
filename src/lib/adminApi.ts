@@ -32,6 +32,17 @@ export function useRiders() {
   );
 }
 
+/** Changes a rider's login email (works right away, no confirmation email). Admin only; done by the admin-users function. */
+export async function setRiderEmail(userId: string, email: string) {
+  const { data, error } = await supabase.functions.invoke('admin-users', { body: { op: 'set_email', user_id: userId, email } });
+  if (error) {
+    // The function answers with { error: '…' }; show that message instead of the generic one.
+    const msg = await (error as { context?: Response }).context?.json?.().then((b: { error?: string }) => b?.error).catch(() => undefined);
+    throw new Error(msg || error.message);
+  }
+  return (data as { email: string }).email;
+}
+
 /** Emails the rider a 6-digit code to set a new password in the app (passwords themselves can never be read). */
 export async function sendPasswordReset(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email);
