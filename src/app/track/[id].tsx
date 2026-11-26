@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapPreview from '@/components/MapPreview';
@@ -12,6 +12,12 @@ import { useNow } from '@/lib/store';
 import { errorText } from '@/lib/supabase';
 import { canCustomerCancel, cargoOf, PAYMENT_LABELS, statusText, STEPS } from '@/lib/trips';
 import { colors, peso } from '@/lib/theme';
+
+/** Leave tracking and land on Home (the order keeps going; it is listed on Home and in Activity). */
+function closeToHome() {
+  if (router.canDismiss()) router.dismissAll();
+  router.navigate('/');
+}
 
 export default function Track() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,7 +64,17 @@ export default function Track() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}` }} />
+      <Stack.Screen
+        options={{
+          title: `${pabili ? 'Order' : 'Pasugo'} ${o.code}`,
+          headerRight: () => (
+            <Pressable onPress={closeToHome} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close and go to Home" style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+              <MaterialCommunityIcons name="close" size={22} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Close</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 32 }}>
         <MapPreview pins={pins} path={o.path?.length ? o.path : [pickup, dropoff]} height={280} rideIcon="motorbike" />
         {live && o.status !== 'searching' && (
@@ -130,6 +146,12 @@ export default function Track() {
 
           <Summary o={o} />
 
+          <Button title="Back to Home" icon="home-variant" onPress={closeToHome} />
+          {live && (
+            <Text style={{ color: colors.muted, textAlign: 'center', marginTop: -4 }}>
+              Your order keeps going. Follow it anytime from Home or the Activity tab.
+            </Text>
+          )}
           {canCustomerCancel(o) && <Button title={pabili ? 'Cancel order' : 'Cancel pasugo'} variant="outline" color={colors.danger} onPress={onCancel} loading={busy} />}
         </View>
       </ScrollView>

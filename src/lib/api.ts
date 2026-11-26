@@ -312,21 +312,37 @@ export type NewOrder = {
 };
 export async function placeOrder(o: NewOrder): Promise<Order> {
   const stop = (s: Stop) => ({ name: s.name, lat: s.location.latitude, lng: s.location.longitude });
-  return must(await supabase.rpc('place_order', { p: { ...o, pickup: stop(o.pickup), dropoff: stop(o.dropoff) } })) as Order;
+  const placed = must(await supabase.rpc('place_order', { p: { ...o, pickup: stop(o.pickup), dropoff: stop(o.dropoff) } })) as Order;
+  ordersChanged();
+  return placed;
 }
 export async function checkPromo(code: string, kind: OrderKind, baseFee: number) {
   const rows = must(await supabase.rpc('promo_discount', { p_code: code, p_kind: kind, p_base_fee: baseFee })) as { discount: number; description: string }[];
   return { discount: Number(rows[0]?.discount ?? 0), description: rows[0]?.description ?? '' };
 }
-export const cancelOrder = async (id: string) => must(await supabase.rpc('cancel_order', { p_id: id })) as Order;
+export const cancelOrder = async (id: string) => {
+  const o = must(await supabase.rpc('cancel_order', { p_id: id })) as Order;
+  ordersChanged();
+  return o;
+};
 export const rateOrder = async (id: string, rating: number) => must(await supabase.rpc('rate_order', { p_id: id, p_rating: rating })) as Order;
 
+/** Lists of "my orders" reload right away when this app places or cancels an order (no waiting for the next poll). */
+const myOrderLists = new Set<() => unknown>();
+const ordersChanged = () => myOrderLists.forEach((reload) => reload());
+
 export function useMyOrders(userId?: string) {
-  return useLive<Order[]>(
+  const live = useLive<Order[]>(
     async () => must(await supabase.from('orders').select('*').eq('customer_id', userId!).order('created_at', { ascending: false }).limit(50)) as Order[],
     [userId],
     { enabled: !!userId, table: 'orders', filter: `customer_id=eq.${userId}`, pollMs: 30_000 },
   );
+  const { refresh } = live;
+  useEffect(() => {
+    myOrderLists.add(refresh);
+    return () => { myOrderLists.delete(refresh); };
+  }, [refresh]);
+  return live;
 }
 
 /** One order with its rider (name, phone, vehicle, plate, live location while the job is active). */

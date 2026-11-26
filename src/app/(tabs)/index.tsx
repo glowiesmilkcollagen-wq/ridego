@@ -41,6 +41,17 @@ export default function Home() {
           <MaterialCommunityIcons name="chevron-down" size={20} color={colors.text} />
         </Pressable>
 
+        {active.length > 0 && (
+          <View style={styles.current}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <MaterialCommunityIcons name="map-marker-path" size={20} color={colors.primary} />
+              <Text style={styles.currentTitle}>{active.length > 1 ? 'Your current orders' : 'Your current order'}</Text>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>Tap to track</Text>
+            </View>
+            {active.map((o) => <TripCard key={o.id} order={o} />)}
+          </View>
+        )}
+
         <Text style={styles.hello}>Hi {first}, where to today?</Text>
 
         <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -65,12 +76,14 @@ export default function Home() {
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>
 
-        {active.length > 0 && (
-          <View style={{ marginTop: 20 }}>
-            <SectionTitle>In progress</SectionTitle>
-            {active.map((o) => <TripCard key={o.id} order={o} />)}
+        <Pressable style={styles.history} onPress={() => router.navigate('/activity')} accessibilityRole="button">
+          <MaterialCommunityIcons name="history" size={24} color={colors.text} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontWeight: '800', color: colors.text }}>Order history</Text>
+            <Text style={{ color: colors.muted, marginTop: 2 }}>Current and past pabili and pasugo orders</Text>
           </View>
-        )}
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.muted} />
+        </Pressable>
 
         <SectionTitle style={{ marginTop: 20 }}>Featured stores near you</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
@@ -93,6 +106,12 @@ const styles = StyleSheet.create({
   serviceEmoji: { fontSize: 40, position: 'absolute', top: 12, right: 14 },
   serviceTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
   serviceSub: { color: 'rgba(255,255,255,0.9)', marginTop: 4 },
+  current: { backgroundColor: colors.primarySoft, borderRadius: radius.lg, padding: 12, paddingBottom: 2, marginTop: 10, borderWidth: 1, borderColor: colors.primary },
+  currentTitle: { fontWeight: '800', color: colors.text, fontSize: 16, marginLeft: 6, flex: 1 },
+  history: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: radius.lg, padding: 14, marginTop: 14,
+    borderWidth: 1, borderColor: colors.border,
+  },
   driverBanner: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF6D6', borderRadius: radius.lg, padding: 14, marginTop: 14,
   },
