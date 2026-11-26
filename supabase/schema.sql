@@ -664,6 +664,15 @@ end $$;
 revoke execute on function public.admin_rider_emails() from public, anon;
 grant execute on function public.admin_rider_emails() to authenticated;
 
+-- Used by the admin-users function (server key only): which account, if any, already has this login email.
+create or replace function public.email_owner(p_email text) returns table (id uuid, role text, full_name text)
+language sql stable security definer set search_path = public as $$
+  select u.id, p.role::text, p.full_name from auth.users u left join public.profiles p on p.id = u.id
+  where lower(u.email) = lower(trim(p_email)) limit 1;
+$$;
+revoke execute on function public.email_owner(text) from public, anon, authenticated;
+grant execute on function public.email_owner(text) to service_role;
+
 -- ============================================================================
 -- Push notifications (Expo push service). The apps register their device token;
 -- triggers on orders and riders send the alerts through pg_net (asynchronous web requests).

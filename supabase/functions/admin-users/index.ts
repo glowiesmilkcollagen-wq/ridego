@@ -49,9 +49,16 @@ Deno.serve(async (req) => {
     if (!EMAIL.test(email) || email.length > 254) return json({ error: 'Enter a valid email address.' }, 400);
     const { data: rider } = await db.from('riders').select('id').eq('id', userId).maybeSingle();
     if (!rider) return json({ error: 'Only rider accounts can be changed here.' }, 400);
+    // Two accounts can't share an email: say which kind of account already has it.
+    const { data: owner } = await db.rpc('email_owner', { p_email: email });
+    const other = (owner as { id: string; role: string | null; full_name: string | null }[] | null)?.[0];
+    if (other && other.id !== userId) {
+      const kind = other.role === 'customer' ? 'a customer account' : other.role === 'rider' ? 'another rider' : other.role === 'admin' ? 'an admin account' : 'another account';
+      return json({ error: `${email} is already used by ${kind}${other.full_name ? ` (${other.full_name})` : ''}. Use a different email, or delete that account first.` }, 409);
+    }
     const { data, error } = await db.auth.admin.updateUserById(userId, { email, email_confirm: true });
     if (error) {
-      const taken = /already|registered|exists/i.test(error.message);
+      const taken = /already|registered|exists|duplicate/i.test(error.message) || error.message === 'Error updating user';
       return json({ error: taken ? 'That email is already used by another account.' : error.message }, taken ? 409 : 400);
     }
     return json({ email: data.user?.email ?? email });
