@@ -358,3 +358,11 @@ select accept_order((select v::uuid from ctx where k = 'j2'));
 select pg_temp.check((select count(*) from orders where rider_id = auth.uid() and status = 'accepted') = 2, 'rider carries 2 orders');
 select pg_temp.expect_error($$select accept_order((select v::uuid from ctx where k = 'j3'))$$, 'at most 2 orders');
 reset role;
+
+\echo '23. admins see the login emails of riders; nobody else can'
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000ad');
+select pg_temp.check((select email from admin_rider_emails() where id = '00000000-0000-0000-0000-00000000000a') = 'rider@example.com', 'admin sees rider email');
+select pg_temp.check(not exists (select 1 from admin_rider_emails() where id = '00000000-0000-0000-0000-00000000000c'), 'customers are not listed');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.expect_error($$select * from admin_rider_emails()$$, 'Admins only');
+reset role;

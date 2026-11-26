@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 
 /** Admin-only data access. The database lets these through only for profiles with role 'admin'. */
 
-export type RiderWithProfile = Rider & { profile: Pick<Profile, 'full_name' | 'phone'> | null };
+export type RiderWithProfile = Rider & { profile: Pick<Profile, 'full_name' | 'phone'> | null; email?: string | null };
 
 export function useAllOrders(days: number) {
   return useLive<Order[]>(
@@ -19,10 +19,23 @@ export function useAllOrders(days: number) {
 
 export function useRiders() {
   return useLive<RiderWithProfile[]>(
-    async () => must(await supabase.from('riders').select('*, profile:profiles(full_name, phone)').order('created_at', { ascending: false })) as RiderWithProfile[],
+    async () => {
+      const [riders, emails] = await Promise.all([
+        supabase.from('riders').select('*, profile:profiles(full_name, phone)').order('created_at', { ascending: false }),
+        supabase.rpc('admin_rider_emails'),
+      ]);
+      const byId = new Map(((emails.data ?? []) as { id: string; email: string }[]).map((e) => [e.id, e.email]));
+      return (must(riders) as RiderWithProfile[]).map((r) => ({ ...r, email: byId.get(r.id) ?? null }));
+    },
     [],
     { table: 'riders', pollMs: 30_000 },
   );
+}
+
+/** Emails the rider a 6-digit code to set a new password in the app (passwords themselves can never be read). */
+export async function sendPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
 }
 export async function setRiderStatus(id: string, status: RiderStatus) {
   must(await supabase.from('riders').update({ status, ...(status === 'approved' ? {} : { online: false }) }).eq('id', id));

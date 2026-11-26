@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Badge, confirmAction, notify, Page, Panel, Segmented, SmallButton, Table } from '@/components/admin/ui';
-import { RiderWithProfile, setRiderStatus, useRiders } from '@/lib/adminApi';
+import { RiderWithProfile, sendPasswordReset, setRiderStatus, useRiders } from '@/lib/adminApi';
 import { RiderStatus } from '@/lib/api';
-import { VEHICLE_LABEL } from '@/lib/pricing';
 import { errorText } from '@/lib/supabase';
 import { colors } from '@/lib/theme';
 
@@ -30,6 +29,17 @@ export default function Riders() {
       }
     });
 
+  const reset = (r: RiderWithProfile) =>
+    r.email &&
+    confirmAction(`Send a reset code to ${r.email}?`, 'They get an email with a 6-digit code to set a new password in the app (Forgot password). Passwords themselves can never be seen.', async () => {
+      try {
+        await sendPasswordReset(r.email!);
+        notify('Code sent', `A reset code was emailed to ${r.email}.`);
+      } catch (e) {
+        notify('Could not send', errorText(e));
+      }
+    });
+
   return (
     <Page title="Riders" subtitle="Check each applicant's license and plate before approving. Only approved riders can go online and take jobs.">
       <Segmented value={tab} onChange={setTab} options={[
@@ -39,12 +49,12 @@ export default function Riders() {
       ]} />
       <Panel>
         <Table
-          head={['Name', 'Mobile', 'Vehicle', 'Plate', 'License no.', tab === 'approved' ? 'Online' : 'Applied', '']}
-          widths={[1.5, 1.1, 1, 1, 1.3, 1.2, 1.6]}
+          head={['Name', 'Login email', 'Mobile', 'Plate', 'License no.', tab === 'approved' ? 'Online' : 'Applied', '']}
+          widths={[1.3, 1.8, 1.1, 0.9, 1.2, 1.1, 1.8]}
           rows={list.map((r) => [
             r.profile?.full_name || '—',
+            r.email || '—',
             r.profile?.phone || '—',
-            VEHICLE_LABEL,
             r.plate,
             r.license_no,
             tab === 'approved'
@@ -52,6 +62,7 @@ export default function Riders() {
               : new Date(r.created_at).toLocaleDateString(),
             <View key="a" style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
               {r.status !== 'approved' && <SmallButton title={r.status === 'pending' ? 'Approve' : 'Reactivate'} tone="primary" onPress={() => change(r, 'approved', r.status === 'pending' ? 'Approve' : 'Reactivate')} />}
+              {r.email ? <SmallButton title="Send reset code" onPress={() => reset(r)} /> : null}
               {r.status !== 'suspended' && <SmallButton title={r.status === 'pending' ? 'Reject' : 'Suspend'} tone="danger" onPress={() => change(r, 'suspended', r.status === 'pending' ? 'Reject' : 'Suspend')} />}
             </View>,
           ])}

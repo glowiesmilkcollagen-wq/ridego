@@ -653,6 +653,17 @@ end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
 
+-- Admin dashboard: the login email of each rider (emails live in auth.users, which the app cannot read directly).
+-- Passwords are never readable (only a one-way hash is stored); admins send a reset code instead.
+create or replace function public.admin_rider_emails() returns table (id uuid, email text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not private.is_admin() then raise exception 'Admins only'; end if;
+  return query select u.id, u.email::text from auth.users u join public.riders r on r.id = u.id;
+end $$;
+revoke execute on function public.admin_rider_emails() from public, anon;
+grant execute on function public.admin_rider_emails() to authenticated;
+
 -- ============================================================================
 -- Push notifications (Expo push service). The apps register their device token;
 -- triggers on orders and riders send the alerts through pg_net (asynchronous web requests).
