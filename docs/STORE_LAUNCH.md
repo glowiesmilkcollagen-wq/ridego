@@ -169,7 +169,9 @@ Answer "yes" to "app shares location" / "users interact" only where the forms as
 The Overview's **Members** card turns yellow at 900 and says when to upgrade. Then:
 1. Supabase → Organization → Billing → upgrade to **Pro** (US$25/month): more live connections (500), 5M realtime messages,
    daily backups, no pausing.
-2. Ask Claude to trim rider location updates (riders currently receive their own location back over realtime).
+2. Keep rider location updates as they are (every 5 s on a job, 15 s otherwise): live tracking stays exact. Pro's
+   realtime quota covers it; if a Supabase usage email warns about realtime messages, add the paid add-on rather than
+   slowing location updates.
 3. Check Google Cloud → Billing → Reports for Routes/Places costs and keep a **budget alert** (e.g. US$20/month).
 
 ## Before or soon after launch (recommended)
