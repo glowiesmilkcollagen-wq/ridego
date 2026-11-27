@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Page, Panel, Segmented, StatCard, Table } from '@/components/admin/ui';
-import { useAllOrders, useRiders } from '@/lib/adminApi';
+import { useAllOrders, useMemberCounts, useRiders } from '@/lib/adminApi';
 import { isOpen, Order } from '@/lib/api';
 import { colors, peso } from '@/lib/theme';
 
 type Range = '1' | '7' | '30' | '90';
 const n = (v: unknown) => Number(v ?? 0);
+/** At this many members, upgrade Supabase to Pro (more live connections, backups) and trim rider location updates. */
+const UPGRADE_AT = 1000;
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' });
 
 function totals(orders: Order[]) {
@@ -25,6 +27,8 @@ export default function Overview() {
   const [range, setRange] = useState<Range>('7');
   const orders = useAllOrders(Number(range));
   const riders = useRiders();
+  const members = useMemberCounts();
+  const total = members.data ? members.data.customers + members.data.riders : null;
   const all = orders.data ?? [];
   const t = totals(all);
   const open = all.filter(isOpen);
@@ -45,6 +49,14 @@ export default function Overview() {
       actions={<Segmented value={range} onChange={setRange} options={[{ value: '1', label: 'Today' }, { value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }]} />}
     >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <StatCard
+          label="Members"
+          value={total == null ? '…' : total.toLocaleString()}
+          hint={total == null ? undefined
+            : total >= UPGRADE_AT ? `${members.data!.customers} customers · ${members.data!.riders} riders. Time to upgrade the server plan (Supabase Pro).`
+            : `${members.data!.customers} customers · ${members.data!.riders} riders · server upgrade at ${UPGRADE_AT.toLocaleString()}`}
+          tone={total != null && total >= UPGRADE_AT * 0.9 ? 'warn' : undefined}
+        />
         <StatCard label="Live orders now" value={String(open.length)} hint={`${open.filter((o) => o.status === 'searching').length} waiting for a rider`} />
         <StatCard label="Riders online" value={String(online)} hint={pending ? `${pending} application${pending > 1 ? 's' : ''} to review` : 'No applications waiting'} tone={pending ? 'warn' : undefined} />
         <StatCard label="Delivered" value={String(t.delivered)} hint={`${t.pabili} pabili · ${t.pasugo} pasugo`} />

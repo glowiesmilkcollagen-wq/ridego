@@ -52,6 +52,23 @@ export async function setRiderStatus(id: string, status: RiderStatus) {
   must(await supabase.from('riders').update({ status, ...(status === 'approved' ? {} : { online: false }) }).eq('id', id));
 }
 
+/** Registered accounts by type (admins can read every profile). */
+export function useMemberCounts() {
+  return useLive<{ customers: number; riders: number }>(
+    async () => {
+      const count = async (role: string) => {
+        const { count: c, error } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', role);
+        if (error) throw error;
+        return c ?? 0;
+      };
+      const [customers, riders] = await Promise.all([count('customer'), count('rider')]);
+      return { customers, riders };
+    },
+    [],
+    { pollMs: 300_000 },
+  );
+}
+
 export function useAllStores() {
   return useLive<StoreRow[]>(async () => must(await supabase.from('stores').select('*').order('category').order('name')) as StoreRow[], [], {});
 }

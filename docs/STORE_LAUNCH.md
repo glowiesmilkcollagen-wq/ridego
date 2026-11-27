@@ -165,6 +165,13 @@ Answer "yes" to "app shares location" / "users interact" only where the forms as
 
 ---
 
+## When the dashboard shows 1,000 members
+The Overview's **Members** card turns yellow at 900 and says when to upgrade. Then:
+1. Supabase → Organization → Billing → upgrade to **Pro** (US$25/month): more live connections (500), 5M realtime messages,
+   daily backups, no pausing.
+2. Ask Claude to trim rider location updates (riders currently receive their own location back over realtime).
+3. Check Google Cloud → Billing → Reports for Routes/Places costs and keep a **budget alert** (e.g. US$20/month).
+
 ## Before or soon after launch (recommended)
 - **Push notifications** are built in. Finish the one-time Firebase setup in [`PUSH_NOTIFICATIONS.md`](PUSH_NOTIFICATIONS.md) before the production Android builds.
 - **Online payments** (GCash/Maya via a provider like PayMongo) — needs a registered business.
