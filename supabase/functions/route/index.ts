@@ -87,7 +87,10 @@ function thin(path: P[], max = MAX_PATH): P[] {
 const waypoint = (p: P) => ({ location: { latLng: { latitude: p[0], longitude: p[1] } } });
 
 // ---------- Google ----------
-async function googleRoute(points: P[]) {
+// Google's first route is the fastest one. For each leg (store -> store -> customer) we also ask for its alternative
+// routes and use the SHORTEST, since the driver fee is charged per km. (Google only offers alternatives for a route
+// without stops in between, so a multi-store route is planned leg by leg and joined.)
+async function googleLeg(a: P, b: P) {
   for (const travelMode of ['TWO_WHEELER', 'DRIVE']) {
     const body = await fetchJson('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
@@ -97,21 +100,30 @@ async function googleRoute(points: P[]) {
         'X-Goog-FieldMask': 'routes.distanceMeters,routes.polyline.encodedPolyline',
       },
       body: JSON.stringify({
-        origin: waypoint(points[0]),
-        destination: waypoint(points[points.length - 1]),
-        intermediates: points.slice(1, -1).map(waypoint),
+        origin: waypoint(a),
+        destination: waypoint(b),
         travelMode,
         routingPreference: 'TRAFFIC_UNAWARE',
+        computeAlternativeRoutes: true,
         regionCode: 'PH',
       }),
     }).catch((e) => {
       if (travelMode === 'DRIVE') throw e;
       return null; // two-wheeler not available here: try car roads
     });
-    const r = body?.routes?.[0];
-    if (r?.distanceMeters != null) return { km: r.distanceMeters / 1000, path: decodePolyline(r.polyline?.encodedPolyline ?? '') };
+    const routes = ((body?.routes ?? []) as { distanceMeters?: number; polyline?: { encodedPolyline?: string } }[])
+      .filter((r) => r.distanceMeters != null);
+    if (routes.length) {
+      const r = routes.reduce((x, y) => (y.distanceMeters! < x.distanceMeters! ? y : x));
+      return { km: r.distanceMeters! / 1000, path: decodePolyline(r.polyline?.encodedPolyline ?? '') };
+    }
   }
   throw new Error('no route');
+}
+
+async function googleRoute(points: P[]) {
+  const legs = await Promise.all(points.slice(1).map((p, i) => googleLeg(points[i], p)));
+  return { km: legs.reduce((s, l) => s + l.km, 0), path: legs.flatMap((l) => l.path) };
 }
 
 async function googleMatrix(origins: P[], dest: P): Promise<(number | null)[]> {
@@ -235,7 +247,7 @@ Deno.serve(async (req) => {
       if (!Array.isArray(points) || points.length < 2 || points.length > MAX_POINTS || !points.every(inPH)) {
         return json({ error: 'Bad points' }, 400);
       }
-      const key = `r:${source}:${points.map(round).join(';')}`;
+      const key = `r2:${source}:${points.map(round).join(';')}`; // r2: shortest of Google's alternatives
       const hit = (await cacheGet([key])).get(key);
       if (hit) return json({ km: hit.km, path: hit.path ?? [], source, cached: true });
       const r = GOOGLE_KEY ? await googleRoute(points) : await osrmRoute(points);
